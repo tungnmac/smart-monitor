@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package monitor;
+option go_package = "./proto";
+
+service MonitorService {
+  // Stream từ Agent gửi về Server
+  rpc StreamStats (stream StatsRequest) returns (StatsResponse);
+}
+
+message StatsRequest {
+  string hostname = 1;
+  double cpu = 2;
+  double ram = 3;
+  double disk = 4;
+}
+
+message StatsResponse {
+  string message = 1;
+}
