@@ -1,11 +1,25 @@
 syntax = "proto3";
 
 package monitor;
-option go_package = "./proto";
+option go_package = "smart-monitor/pbtypes/monitor";
+
+import "google/api/annotations.proto";
 
 service MonitorService {
   // Stream từ Agent gửi về Server
-  rpc StreamStats (stream StatsRequest) returns (StatsResponse);
+  rpc StreamStats (stream StatsRequest) returns (StatsResponse) {
+    option (google.api.http) = {
+      post: "/v1/stats/stream"
+      body: "*"
+    };
+  }
+
+  // Thêm một RPC unary để lấy stats
+  rpc GetStats (StatsRequest) returns (StatsResponse) {
+    option (google.api.http) = {
+      get: "/v1/stats"
+    };
+  }
 }
 
 message StatsRequest {
@@ -17,4 +31,5 @@ message StatsRequest {
 
 message StatsResponse {
   string message = 1;
+  int64 timestamp = 2;
 }

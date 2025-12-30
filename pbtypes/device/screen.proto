@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package device;
+option go_package = "smart-monitor/pbtypes/device";
+
+import "google/api/annotations.proto";
+
+service DeviceService {
+  rpc GetScreenCapture (GetScreenCaptureRequest) returns (GetScreenCaptureResponse) {
+    option (google.api.http) = {
+      get: "/v1/device/screen"
+    };
+  }
+
+  rpc SetScreenResolution (SetScreenResolutionRequest) returns (SetScreenResolutionResponse) {
+    option (google.api.http) = {
+      post: "/v1/device/screen/resolution"
+      body: "*"
+    };
+  }
+}
+
+message GetScreenCaptureRequest {
+  string hostname = 1;
+}
+
+message GetScreenCaptureResponse {
+  bytes image_data = 1;
+  string format = 2;
+  int64 timestamp = 3;
+}
+
+message SetScreenResolutionRequest {
+  string hostname = 1;
+  int32 width = 2;
+  int32 height = 3;
+}
+
+message SetScreenResolutionResponse {
+  string message = 1;
+}

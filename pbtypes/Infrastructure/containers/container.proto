@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package containers;
+option go_package = "smart-monitor/pbtypes/Infrastructure/containers";
+
+import "google/api/annotations.proto";
+
+service ContainerService {
+  rpc GetContainers (GetContainersRequest) returns (GetContainersResponse) {
+    option (google.api.http) = {
+      get: "/v1/containers"
+    };
+  }
+}
+
+message GetContainersRequest {
+  string hostname = 1;
+}
+
+message GetContainersResponse {
+  repeated Container containers = 1;
+  int64 timestamp = 2;
+}
+
+message Container {
+  string id = 1;
+  string name = 2;
+  string image = 3;
+  string status = 4;
+}

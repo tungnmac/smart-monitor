@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package system;
+option go_package = "smart-monitor/pbtypes/system";
+
+import "google/api/annotations.proto";
+
+service SystemService {
+  rpc GetSystemInfo (GetSystemInfoRequest) returns (GetSystemInfoResponse) {
+    option (google.api.http) = {
+      get: "/v1/system/info"
+    };
+  }
+}
+
+message GetSystemInfoRequest {
+  string hostname = 1;
+}
+
+message GetSystemInfoResponse {
+  string os = 1;
+  string arch = 2;
+  int32 uptime = 3;
+  string kernel_version = 4;
+  int64 timestamp = 5;
+}

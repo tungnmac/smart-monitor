@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package machines;
+option go_package = "smart-monitor/pbtypes/Infrastructure/machines";
+
+import "google/api/annotations.proto";
+
+service MachineService {
+  rpc GetMachines (GetMachinesRequest) returns (GetMachinesResponse) {
+    option (google.api.http) = {
+      get: "/v1/machines"
+    };
+  }
+}
+
+message GetMachinesRequest {
+  string hostname = 1;
+}
+
+message GetMachinesResponse {
+  repeated Machine machines = 1;
+  int64 timestamp = 2;
+}
+
+message Machine {
+  string id = 1;
+  string name = 2;
+  string type = 3;
+  string location = 4;
+}

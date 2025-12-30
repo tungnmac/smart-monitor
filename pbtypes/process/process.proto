@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package process;
+option go_package = "smart-monitor/pbtypes/process";
+
+import "google/api/annotations.proto";
+
+service ProcessService {
+  rpc GetProcesses (GetProcessesRequest) returns (GetProcessesResponse) {
+    option (google.api.http) = {
+      get: "/v1/processes"
+    };
+  }
+
+  rpc KillProcess (KillProcessRequest) returns (KillProcessResponse) {
+    option (google.api.http) = {
+      post: "/v1/processes/kill"
+      body: "*"
+    };
+  }
+}
+
+message GetProcessesRequest {
+  string hostname = 1;
+}
+
+message GetProcessesResponse {
+  repeated Process processes = 1;
+  int64 timestamp = 2;
+}
+
+message Process {
+  int32 pid = 1;
+  string name = 2;
+  double cpu = 3;
+  double memory = 4;
+}
+
+message KillProcessRequest {
+  string hostname = 1;
+  int32 pid = 2;
+}
+
+message KillProcessResponse {
+  string message = 1;
+  int64 timestamp = 2;
+}

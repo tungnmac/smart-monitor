@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package security;
+option go_package = "smart-monitor/pbtypes/security";
+
+import "google/api/annotations.proto";
+
+service SecurityService {
+  rpc GetSecurityStatus (GetSecurityStatusRequest) returns (GetSecurityStatusResponse) {
+    option (google.api.http) = {
+      get: "/v1/security/status"
+    };
+  }
+}
+
+message GetSecurityStatusRequest {
+  string hostname = 1;
+}
+
+message GetSecurityStatusResponse {
+  repeated SecurityIssue issues = 1;
+  int64 timestamp = 2;
+}
+
+message SecurityIssue {
+  string id = 1;
+  string description = 2;
+  string severity = 3;
+}

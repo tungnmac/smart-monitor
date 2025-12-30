@@ -4,9 +4,10 @@
 // 	protoc        v6.33.2
 // source: monitor/monitor.proto
 
-package proto
+package monitor
 
 import (
+	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -92,6 +93,7 @@ func (x *StatsRequest) GetDisk() float64 {
 type StatsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	Timestamp     int64                  `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -133,20 +135,29 @@ func (x *StatsResponse) GetMessage() string {
 	return ""
 }
 
+func (x *StatsResponse) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
 var File_monitor_monitor_proto protoreflect.FileDescriptor
 
 const file_monitor_monitor_proto_rawDesc = "" +
 	"\n" +
-	"\x15monitor/monitor.proto\x12\amonitor\"b\n" +
+	"\x15monitor/monitor.proto\x12\amonitor\x1a\x1cgoogle/api/annotations.proto\"b\n" +
 	"\fStatsRequest\x12\x1a\n" +
 	"\bhostname\x18\x01 \x01(\tR\bhostname\x12\x10\n" +
 	"\x03cpu\x18\x02 \x01(\x01R\x03cpu\x12\x10\n" +
 	"\x03ram\x18\x03 \x01(\x01R\x03ram\x12\x12\n" +
-	"\x04disk\x18\x04 \x01(\x01R\x04disk\")\n" +
+	"\x04disk\x18\x04 \x01(\x01R\x04disk\"G\n" +
 	"\rStatsResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage2P\n" +
-	"\x0eMonitorService\x12>\n" +
-	"\vStreamStats\x12\x15.monitor.StatsRequest\x1a\x16.monitor.StatsResponse(\x01B\tZ\a./protob\x06proto3"
+	"\amessage\x18\x01 \x01(\tR\amessage\x12\x1c\n" +
+	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp2\xbb\x01\n" +
+	"\x0eMonitorService\x12[\n" +
+	"\vStreamStats\x12\x15.monitor.StatsRequest\x1a\x16.monitor.StatsResponse\"\x1b\x82\xd3\xe4\x93\x02\x15:\x01*\"\x10/v1/stats/stream(\x01\x12L\n" +
+	"\bGetStats\x12\x15.monitor.StatsRequest\x1a\x16.monitor.StatsResponse\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/v1/statsB\x1fZ\x1dsmart-monitor/pbtypes/monitorb\x06proto3"
 
 var (
 	file_monitor_monitor_proto_rawDescOnce sync.Once
@@ -167,9 +178,11 @@ var file_monitor_monitor_proto_goTypes = []any{
 }
 var file_monitor_monitor_proto_depIdxs = []int32{
 	0, // 0: monitor.MonitorService.StreamStats:input_type -> monitor.StatsRequest
-	1, // 1: monitor.MonitorService.StreamStats:output_type -> monitor.StatsResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
+	0, // 1: monitor.MonitorService.GetStats:input_type -> monitor.StatsRequest
+	1, // 2: monitor.MonitorService.StreamStats:output_type -> monitor.StatsResponse
+	1, // 3: monitor.MonitorService.GetStats:output_type -> monitor.StatsResponse
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name

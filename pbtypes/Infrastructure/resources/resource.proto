@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package resources;
+option go_package = "smart-monitor/pbtypes/Infrastructure/resources";
+
+import "google/api/annotations.proto";
+
+service ResourceService {
+  rpc GetResources (GetResourcesRequest) returns (GetResourcesResponse) {
+    option (google.api.http) = {
+      get: "/v1/resources"
+    };
+  }
+}
+
+message GetResourcesRequest {
+  string hostname = 1;
+}
+
+message GetResourcesResponse {
+  repeated Resource resources = 1;
+  int64 timestamp = 2;
+}
+
+message Resource {
+  string id = 1;
+  string type = 2;
+  double value = 3;
+}

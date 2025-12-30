@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package disk;
+option go_package = "smart-monitor/pbtypes/disk";
+
+import "google/api/annotations.proto";
+
+service DiskService {
+  rpc GetDiskStats (GetDiskStatsRequest) returns (GetDiskStatsResponse) {
+    option (google.api.http) = {
+      get: "/v1/disk/stats"
+    };
+  }
+}
+
+message GetDiskStatsRequest {
+  string hostname = 1;
+}
+
+message GetDiskStatsResponse {
+  repeated DiskPartition partitions = 1;
+  int64 timestamp = 2;
+}
+
+message DiskPartition {
+  string mount_point = 1;
+  double total = 2;
+  double used = 3;
+  double free = 4;
+}

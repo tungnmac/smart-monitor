@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package logs;
+option go_package = "smart-monitor/pbtypes/logs";
+
+import "google/api/annotations.proto";
+
+service LogService {
+  rpc GetLogs (GetLogsRequest) returns (GetLogsResponse) {
+    option (google.api.http) = {
+      get: "/v1/logs"
+    };
+  }
+}
+
+message GetLogsRequest {
+  string hostname = 1;
+  string service = 2;
+}
+
+message GetLogsResponse {
+  repeated LogEntry entries = 1;
+  int64 timestamp = 2;
+}
+
+message LogEntry {
+  int64 time = 1;
+  string level = 2;
+  string message = 3;
+}

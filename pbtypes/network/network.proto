@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package network;
+option go_package = "smart-monitor/pbtypes/network";
+
+import "google/api/annotations.proto";
+
+service NetworkService {
+  rpc GetNetworkStats (GetNetworkStatsRequest) returns (GetNetworkStatsResponse) {
+    option (google.api.http) = {
+      get: "/v1/network/stats"
+    };
+  }
+}
+
+message GetNetworkStatsRequest {
+  string hostname = 1;
+}
+
+message GetNetworkStatsResponse {
+  repeated NetworkInterface interfaces = 1;
+  int64 timestamp = 2;
+}
+
+message NetworkInterface {
+  string name = 1;
+  string ip = 2;
+  double rx_bytes = 3;
+  double tx_bytes = 4;
+}

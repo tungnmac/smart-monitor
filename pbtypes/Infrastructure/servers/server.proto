@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package servers;
+option go_package = "smart-monitor/pbtypes/Infrastructure/servers";
+
+import "google/api/annotations.proto";
+
+service ServerService {
+  rpc GetServers (GetServersRequest) returns (GetServersResponse) {
+    option (google.api.http) = {
+      get: "/v1/servers"
+    };
+  }
+}
+
+message GetServersRequest {
+  string hostname = 1;
+}
+
+message GetServersResponse {
+  repeated Server servers = 1;
+  int64 timestamp = 2;
+}
+
+message Server {
+  string id = 1;
+  string name = 2;
+  string status = 3;
+}

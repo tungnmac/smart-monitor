@@ -4,7 +4,7 @@
 // - protoc             v6.33.2
 // source: monitor/monitor.proto
 
-package proto
+package monitor
 
 import (
 	context "context"
@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	MonitorService_StreamStats_FullMethodName = "/monitor.MonitorService/StreamStats"
+	MonitorService_GetStats_FullMethodName    = "/monitor.MonitorService/GetStats"
 )
 
 // MonitorServiceClient is the client API for MonitorService service.
@@ -28,6 +29,8 @@ const (
 type MonitorServiceClient interface {
 	// Stream từ Agent gửi về Server
 	StreamStats(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[StatsRequest, StatsResponse], error)
+	// Thêm một RPC unary để lấy stats
+	GetStats(ctx context.Context, in *StatsRequest, opts ...grpc.CallOption) (*StatsResponse, error)
 }
 
 type monitorServiceClient struct {
@@ -51,12 +54,24 @@ func (c *monitorServiceClient) StreamStats(ctx context.Context, opts ...grpc.Cal
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type MonitorService_StreamStatsClient = grpc.ClientStreamingClient[StatsRequest, StatsResponse]
 
+func (c *monitorServiceClient) GetStats(ctx context.Context, in *StatsRequest, opts ...grpc.CallOption) (*StatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StatsResponse)
+	err := c.cc.Invoke(ctx, MonitorService_GetStats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MonitorServiceServer is the server API for MonitorService service.
 // All implementations must embed UnimplementedMonitorServiceServer
 // for forward compatibility.
 type MonitorServiceServer interface {
 	// Stream từ Agent gửi về Server
 	StreamStats(grpc.ClientStreamingServer[StatsRequest, StatsResponse]) error
+	// Thêm một RPC unary để lấy stats
+	GetStats(context.Context, *StatsRequest) (*StatsResponse, error)
 	mustEmbedUnimplementedMonitorServiceServer()
 }
 
@@ -69,6 +84,9 @@ type UnimplementedMonitorServiceServer struct{}
 
 func (UnimplementedMonitorServiceServer) StreamStats(grpc.ClientStreamingServer[StatsRequest, StatsResponse]) error {
 	return status.Error(codes.Unimplemented, "method StreamStats not implemented")
+}
+func (UnimplementedMonitorServiceServer) GetStats(context.Context, *StatsRequest) (*StatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetStats not implemented")
 }
 func (UnimplementedMonitorServiceServer) mustEmbedUnimplementedMonitorServiceServer() {}
 func (UnimplementedMonitorServiceServer) testEmbeddedByValue()                        {}
@@ -98,13 +116,36 @@ func _MonitorService_StreamStats_Handler(srv interface{}, stream grpc.ServerStre
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type MonitorService_StreamStatsServer = grpc.ClientStreamingServer[StatsRequest, StatsResponse]
 
+func _MonitorService_GetStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MonitorServiceServer).GetStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MonitorService_GetStats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MonitorServiceServer).GetStats(ctx, req.(*StatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MonitorService_ServiceDesc is the grpc.ServiceDesc for MonitorService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var MonitorService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "monitor.MonitorService",
 	HandlerType: (*MonitorServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetStats",
+			Handler:    _MonitorService_GetStats_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "StreamStats",
