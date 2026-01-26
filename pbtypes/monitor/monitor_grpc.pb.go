@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.0
 // - protoc             v6.33.2
-// source: monitor/monitor.proto
+// source: monitor.proto
 
 package monitor
 
@@ -19,17 +19,39 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MonitorService_StreamStats_FullMethodName = "/monitor.MonitorService/StreamStats"
-	MonitorService_GetStats_FullMethodName    = "/monitor.MonitorService/GetStats"
+	MonitorService_RegisterAgent_FullMethodName = "/monitor.MonitorService/RegisterAgent"
+	MonitorService_ControlAgent_FullMethodName  = "/monitor.MonitorService/ControlAgent"
+	MonitorService_BlockAgent_FullMethodName    = "/monitor.MonitorService/BlockAgent"
+	MonitorService_AddPolicy_FullMethodName     = "/monitor.MonitorService/AddPolicy"
+	MonitorService_UpdatePolicy_FullMethodName  = "/monitor.MonitorService/UpdatePolicy"
+	MonitorService_RemovePolicy_FullMethodName  = "/monitor.MonitorService/RemovePolicy"
+	MonitorService_ListPolicies_FullMethodName  = "/monitor.MonitorService/ListPolicies"
+	MonitorService_ApplyPolicy_FullMethodName   = "/monitor.MonitorService/ApplyPolicy"
+	MonitorService_UnapplyPolicy_FullMethodName = "/monitor.MonitorService/UnapplyPolicy"
+	MonitorService_StreamStats_FullMethodName   = "/monitor.MonitorService/StreamStats"
+	MonitorService_GetStats_FullMethodName      = "/monitor.MonitorService/GetStats"
 )
 
 // MonitorServiceClient is the client API for MonitorService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MonitorServiceClient interface {
-	// Stream từ Agent gửi về Server
+	// Register Agent - Agent must register first before streaming
+	RegisterAgent(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
+	// Control Agent Operations
+	ControlAgent(ctx context.Context, in *ControlAgentRequest, opts ...grpc.CallOption) (*ControlAgentResponse, error)
+	// Block/Unblock Agent
+	BlockAgent(ctx context.Context, in *BlockAgentRequest, opts ...grpc.CallOption) (*BlockAgentResponse, error)
+	// Policy Management
+	AddPolicy(ctx context.Context, in *PolicyRequest, opts ...grpc.CallOption) (*PolicyResponse, error)
+	UpdatePolicy(ctx context.Context, in *PolicyRequest, opts ...grpc.CallOption) (*PolicyResponse, error)
+	RemovePolicy(ctx context.Context, in *RemovePolicyRequest, opts ...grpc.CallOption) (*PolicyResponse, error)
+	ListPolicies(ctx context.Context, in *ListPoliciesRequest, opts ...grpc.CallOption) (*ListPoliciesResponse, error)
+	ApplyPolicy(ctx context.Context, in *ApplyPolicyRequest, opts ...grpc.CallOption) (*PolicyResponse, error)
+	UnapplyPolicy(ctx context.Context, in *UnapplyPolicyRequest, opts ...grpc.CallOption) (*PolicyResponse, error)
+	// Stream từ Agent gửi về Server (requires authentication)
 	StreamStats(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[StatsRequest, StatsResponse], error)
-	// Thêm một RPC unary để lấy stats
+	// Get stats for a specific hostname
 	GetStats(ctx context.Context, in *StatsRequest, opts ...grpc.CallOption) (*StatsResponse, error)
 }
 
@@ -39,6 +61,96 @@ type monitorServiceClient struct {
 
 func NewMonitorServiceClient(cc grpc.ClientConnInterface) MonitorServiceClient {
 	return &monitorServiceClient{cc}
+}
+
+func (c *monitorServiceClient) RegisterAgent(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RegisterResponse)
+	err := c.cc.Invoke(ctx, MonitorService_RegisterAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *monitorServiceClient) ControlAgent(ctx context.Context, in *ControlAgentRequest, opts ...grpc.CallOption) (*ControlAgentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ControlAgentResponse)
+	err := c.cc.Invoke(ctx, MonitorService_ControlAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *monitorServiceClient) BlockAgent(ctx context.Context, in *BlockAgentRequest, opts ...grpc.CallOption) (*BlockAgentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BlockAgentResponse)
+	err := c.cc.Invoke(ctx, MonitorService_BlockAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *monitorServiceClient) AddPolicy(ctx context.Context, in *PolicyRequest, opts ...grpc.CallOption) (*PolicyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PolicyResponse)
+	err := c.cc.Invoke(ctx, MonitorService_AddPolicy_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *monitorServiceClient) UpdatePolicy(ctx context.Context, in *PolicyRequest, opts ...grpc.CallOption) (*PolicyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PolicyResponse)
+	err := c.cc.Invoke(ctx, MonitorService_UpdatePolicy_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *monitorServiceClient) RemovePolicy(ctx context.Context, in *RemovePolicyRequest, opts ...grpc.CallOption) (*PolicyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PolicyResponse)
+	err := c.cc.Invoke(ctx, MonitorService_RemovePolicy_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *monitorServiceClient) ListPolicies(ctx context.Context, in *ListPoliciesRequest, opts ...grpc.CallOption) (*ListPoliciesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPoliciesResponse)
+	err := c.cc.Invoke(ctx, MonitorService_ListPolicies_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *monitorServiceClient) ApplyPolicy(ctx context.Context, in *ApplyPolicyRequest, opts ...grpc.CallOption) (*PolicyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PolicyResponse)
+	err := c.cc.Invoke(ctx, MonitorService_ApplyPolicy_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *monitorServiceClient) UnapplyPolicy(ctx context.Context, in *UnapplyPolicyRequest, opts ...grpc.CallOption) (*PolicyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PolicyResponse)
+	err := c.cc.Invoke(ctx, MonitorService_UnapplyPolicy_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *monitorServiceClient) StreamStats(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[StatsRequest, StatsResponse], error) {
@@ -68,9 +180,22 @@ func (c *monitorServiceClient) GetStats(ctx context.Context, in *StatsRequest, o
 // All implementations must embed UnimplementedMonitorServiceServer
 // for forward compatibility.
 type MonitorServiceServer interface {
-	// Stream từ Agent gửi về Server
+	// Register Agent - Agent must register first before streaming
+	RegisterAgent(context.Context, *RegisterRequest) (*RegisterResponse, error)
+	// Control Agent Operations
+	ControlAgent(context.Context, *ControlAgentRequest) (*ControlAgentResponse, error)
+	// Block/Unblock Agent
+	BlockAgent(context.Context, *BlockAgentRequest) (*BlockAgentResponse, error)
+	// Policy Management
+	AddPolicy(context.Context, *PolicyRequest) (*PolicyResponse, error)
+	UpdatePolicy(context.Context, *PolicyRequest) (*PolicyResponse, error)
+	RemovePolicy(context.Context, *RemovePolicyRequest) (*PolicyResponse, error)
+	ListPolicies(context.Context, *ListPoliciesRequest) (*ListPoliciesResponse, error)
+	ApplyPolicy(context.Context, *ApplyPolicyRequest) (*PolicyResponse, error)
+	UnapplyPolicy(context.Context, *UnapplyPolicyRequest) (*PolicyResponse, error)
+	// Stream từ Agent gửi về Server (requires authentication)
 	StreamStats(grpc.ClientStreamingServer[StatsRequest, StatsResponse]) error
-	// Thêm một RPC unary để lấy stats
+	// Get stats for a specific hostname
 	GetStats(context.Context, *StatsRequest) (*StatsResponse, error)
 	mustEmbedUnimplementedMonitorServiceServer()
 }
@@ -82,6 +207,33 @@ type MonitorServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedMonitorServiceServer struct{}
 
+func (UnimplementedMonitorServiceServer) RegisterAgent(context.Context, *RegisterRequest) (*RegisterResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RegisterAgent not implemented")
+}
+func (UnimplementedMonitorServiceServer) ControlAgent(context.Context, *ControlAgentRequest) (*ControlAgentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ControlAgent not implemented")
+}
+func (UnimplementedMonitorServiceServer) BlockAgent(context.Context, *BlockAgentRequest) (*BlockAgentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BlockAgent not implemented")
+}
+func (UnimplementedMonitorServiceServer) AddPolicy(context.Context, *PolicyRequest) (*PolicyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddPolicy not implemented")
+}
+func (UnimplementedMonitorServiceServer) UpdatePolicy(context.Context, *PolicyRequest) (*PolicyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdatePolicy not implemented")
+}
+func (UnimplementedMonitorServiceServer) RemovePolicy(context.Context, *RemovePolicyRequest) (*PolicyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemovePolicy not implemented")
+}
+func (UnimplementedMonitorServiceServer) ListPolicies(context.Context, *ListPoliciesRequest) (*ListPoliciesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPolicies not implemented")
+}
+func (UnimplementedMonitorServiceServer) ApplyPolicy(context.Context, *ApplyPolicyRequest) (*PolicyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ApplyPolicy not implemented")
+}
+func (UnimplementedMonitorServiceServer) UnapplyPolicy(context.Context, *UnapplyPolicyRequest) (*PolicyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnapplyPolicy not implemented")
+}
 func (UnimplementedMonitorServiceServer) StreamStats(grpc.ClientStreamingServer[StatsRequest, StatsResponse]) error {
 	return status.Error(codes.Unimplemented, "method StreamStats not implemented")
 }
@@ -107,6 +259,168 @@ func RegisterMonitorServiceServer(s grpc.ServiceRegistrar, srv MonitorServiceSer
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&MonitorService_ServiceDesc, srv)
+}
+
+func _MonitorService_RegisterAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MonitorServiceServer).RegisterAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MonitorService_RegisterAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MonitorServiceServer).RegisterAgent(ctx, req.(*RegisterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MonitorService_ControlAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ControlAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MonitorServiceServer).ControlAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MonitorService_ControlAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MonitorServiceServer).ControlAgent(ctx, req.(*ControlAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MonitorService_BlockAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BlockAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MonitorServiceServer).BlockAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MonitorService_BlockAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MonitorServiceServer).BlockAgent(ctx, req.(*BlockAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MonitorService_AddPolicy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PolicyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MonitorServiceServer).AddPolicy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MonitorService_AddPolicy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MonitorServiceServer).AddPolicy(ctx, req.(*PolicyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MonitorService_UpdatePolicy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PolicyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MonitorServiceServer).UpdatePolicy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MonitorService_UpdatePolicy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MonitorServiceServer).UpdatePolicy(ctx, req.(*PolicyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MonitorService_RemovePolicy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemovePolicyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MonitorServiceServer).RemovePolicy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MonitorService_RemovePolicy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MonitorServiceServer).RemovePolicy(ctx, req.(*RemovePolicyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MonitorService_ListPolicies_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPoliciesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MonitorServiceServer).ListPolicies(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MonitorService_ListPolicies_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MonitorServiceServer).ListPolicies(ctx, req.(*ListPoliciesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MonitorService_ApplyPolicy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ApplyPolicyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MonitorServiceServer).ApplyPolicy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MonitorService_ApplyPolicy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MonitorServiceServer).ApplyPolicy(ctx, req.(*ApplyPolicyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MonitorService_UnapplyPolicy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnapplyPolicyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MonitorServiceServer).UnapplyPolicy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MonitorService_UnapplyPolicy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MonitorServiceServer).UnapplyPolicy(ctx, req.(*UnapplyPolicyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _MonitorService_StreamStats_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -142,6 +456,42 @@ var MonitorService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*MonitorServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "RegisterAgent",
+			Handler:    _MonitorService_RegisterAgent_Handler,
+		},
+		{
+			MethodName: "ControlAgent",
+			Handler:    _MonitorService_ControlAgent_Handler,
+		},
+		{
+			MethodName: "BlockAgent",
+			Handler:    _MonitorService_BlockAgent_Handler,
+		},
+		{
+			MethodName: "AddPolicy",
+			Handler:    _MonitorService_AddPolicy_Handler,
+		},
+		{
+			MethodName: "UpdatePolicy",
+			Handler:    _MonitorService_UpdatePolicy_Handler,
+		},
+		{
+			MethodName: "RemovePolicy",
+			Handler:    _MonitorService_RemovePolicy_Handler,
+		},
+		{
+			MethodName: "ListPolicies",
+			Handler:    _MonitorService_ListPolicies_Handler,
+		},
+		{
+			MethodName: "ApplyPolicy",
+			Handler:    _MonitorService_ApplyPolicy_Handler,
+		},
+		{
+			MethodName: "UnapplyPolicy",
+			Handler:    _MonitorService_UnapplyPolicy_Handler,
+		},
+		{
 			MethodName: "GetStats",
 			Handler:    _MonitorService_GetStats_Handler,
 		},
@@ -153,5 +503,5 @@ var MonitorService_ServiceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
-	Metadata: "monitor/monitor.proto",
+	Metadata: "monitor.proto",
 }

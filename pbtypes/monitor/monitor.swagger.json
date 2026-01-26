@@ -1,13 +1,22 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "monitor/monitor.proto",
-    "version": "version not set"
+    "title": "Smart Monitor API",
+    "description": "API for Smart Monitor - Distributed System Monitoring Platform with Agent Registration and Authentication",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Smart Monitor Team",
+      "email": "support@smartmonitor.example.com"
+    }
   },
   "tags": [
     {
       "name": "MonitorService"
     }
+  ],
+  "schemes": [
+    "http",
+    "https"
   ],
   "consumes": [
     "application/json"
@@ -16,15 +25,63 @@
     "application/json"
   ],
   "paths": {
-    "/v1/stats": {
-      "get": {
-        "summary": "Thêm một RPC unary để lấy stats",
-        "operationId": "MonitorService_GetStats",
+    "/v1/agent/register": {
+      "post": {
+        "summary": "Register a new monitoring agent",
+        "description": "Register a new agent with the backend system. Returns unique agent ID and access token for authentication.",
+        "operationId": "MonitorService_RegisterAgent",
+        "responses": {
+          "200": {
+            "description": "Agent registered successfully",
+            "schema": {
+              "$ref": "#/definitions/monitorRegisterResponse"
+            },
+            "examples": {
+              "application/json": {
+                "success": true,
+                "message": "Agent registered successfully",
+                "agent_id": "agent-a3f5c2d1",
+                "access_token": "3f4a8b2c1d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2",
+                "expires_at": 1737849600
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - missing or invalid parameters",
+            "schema": {}
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/monitorRegisterRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Agent Management"
+        ]
+      }
+    },
+    "/v1/agent/{agentId}/block": {
+      "post": {
+        "summary": "Block or unblock an agent",
+        "description": "Enable or disable blocking for an agent",
+        "operationId": "MonitorService_BlockAgent",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/monitorStatsResponse"
+              "$ref": "#/definitions/monitorBlockAgentResponse"
             }
           },
           "default": {
@@ -36,41 +93,303 @@
         },
         "parameters": [
           {
-            "name": "hostname",
-            "in": "query",
-            "required": false,
+            "name": "agentId",
+            "in": "path",
+            "required": true,
             "type": "string"
           },
           {
-            "name": "cpu",
-            "in": "query",
-            "required": false,
-            "type": "number",
-            "format": "double"
-          },
-          {
-            "name": "ram",
-            "in": "query",
-            "required": false,
-            "type": "number",
-            "format": "double"
-          },
-          {
-            "name": "disk",
-            "in": "query",
-            "required": false,
-            "type": "number",
-            "format": "double"
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/MonitorServiceBlockAgentBody"
+            }
           }
         ],
         "tags": [
-          "MonitorService"
+          "Agent Control"
+        ]
+      }
+    },
+    "/v1/agent/{agentId}/control": {
+      "post": {
+        "summary": "Control agent operations (start, shutdown, restart)",
+        "description": "Send control commands to agent: start, shutdown, restart",
+        "operationId": "MonitorService_ControlAgent",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/monitorControlAgentResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/MonitorServiceControlAgentBody"
+            }
+          }
+        ],
+        "tags": [
+          "Agent Control"
+        ]
+      }
+    },
+    "/v1/agent/{agentId}/policy/{policyId}/apply": {
+      "post": {
+        "summary": "Apply policy to agent",
+        "description": "Apply a policy to specific agent",
+        "operationId": "MonitorService_ApplyPolicy",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/monitorPolicyResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "policyId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/MonitorServiceApplyPolicyBody"
+            }
+          }
+        ],
+        "tags": [
+          "Policy Management"
+        ]
+      }
+    },
+    "/v1/agent/{agentId}/policy/{policyId}/unapply": {
+      "post": {
+        "summary": "Unapply policy from agent",
+        "description": "Remove policy from specific agent",
+        "operationId": "MonitorService_UnapplyPolicy",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/monitorPolicyResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "policyId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/MonitorServiceUnapplyPolicyBody"
+            }
+          }
+        ],
+        "tags": [
+          "Policy Management"
+        ]
+      }
+    },
+    "/v1/policies": {
+      "get": {
+        "summary": "List all policies",
+        "description": "Retrieve all monitoring policies",
+        "operationId": "MonitorService_ListPolicies",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/monitorListPoliciesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "Policy Management"
+        ]
+      },
+      "post": {
+        "summary": "Add a new monitoring policy",
+        "description": "Create a new policy with thresholds and actions",
+        "operationId": "MonitorService_AddPolicy",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/monitorPolicyResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/monitorPolicyRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Policy Management"
+        ]
+      }
+    },
+    "/v1/policies/{policyId}": {
+      "delete": {
+        "summary": "Remove a policy",
+        "description": "Delete an existing policy",
+        "operationId": "MonitorService_RemovePolicy",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/monitorPolicyResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "policyId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Policy Management"
+        ]
+      },
+      "put": {
+        "summary": "Update an existing policy",
+        "description": "Modify policy configuration",
+        "operationId": "MonitorService_UpdatePolicy",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/monitorPolicyResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "policyId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/MonitorServiceUpdatePolicyBody"
+            }
+          }
+        ],
+        "tags": [
+          "Policy Management"
         ]
       }
     },
     "/v1/stats/stream": {
       "post": {
-        "summary": "Stream từ Agent gửi về Server",
+        "summary": "Stream system metrics from agent",
+        "description": "Agent streams real-time system metrics (CPU, RAM, Disk) to backend. Requires valid authentication token.",
         "operationId": "MonitorService_StreamStats",
         "responses": {
           "200": {
@@ -98,29 +417,469 @@
           }
         ],
         "tags": [
-          "MonitorService"
+          "Metrics"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/stats/{hostname}": {
+      "get": {
+        "summary": "Get stats for a specific host",
+        "description": "Retrieve the latest system metrics for a specific hostname or agent ID.",
+        "operationId": "MonitorService_GetStats",
+        "responses": {
+          "200": {
+            "description": "Stats retrieved successfully",
+            "schema": {
+              "$ref": "#/definitions/monitorStatsResponse"
+            },
+            "examples": {
+              "application/json": {
+                "message": "Stats for server-01: CPU=45.20%, RAM=68.50%, Disk=72.30% (Last received: 2026-01-26T10:30:00Z)",
+                "timestamp": 1737882600
+              }
+            }
+          },
+          "404": {
+            "description": "Host not found",
+            "schema": {}
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hostname",
+            "description": "Hostname of the monitored server",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "cpu",
+            "description": "CPU usage percentage (0-100)",
+            "in": "query",
+            "required": false,
+            "type": "number",
+            "format": "double"
+          },
+          {
+            "name": "ram",
+            "description": "RAM usage percentage (0-100)",
+            "in": "query",
+            "required": false,
+            "type": "number",
+            "format": "double"
+          },
+          {
+            "name": "disk",
+            "description": "Disk usage percentage (0-100)",
+            "in": "query",
+            "required": false,
+            "type": "number",
+            "format": "double"
+          },
+          {
+            "name": "agentId",
+            "description": "Unique agent identifier assigned during registration",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "ipAddress",
+            "description": "IP address of the agent",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "agentVersion",
+            "description": "Version of the monitoring agent",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "metadata",
+            "description": "Additional metadata about the agent (location, environment, etc.)",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "accessToken",
+            "description": "Authentication token obtained during registration",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Metrics"
         ]
       }
     }
   },
   "definitions": {
+    "MonitorServiceApplyPolicyBody": {
+      "type": "object"
+    },
+    "MonitorServiceBlockAgentBody": {
+      "type": "object",
+      "properties": {
+        "blocked": {
+          "type": "boolean",
+          "title": "true to block, false to unblock"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "title": "Block Agent Messages"
+    },
+    "MonitorServiceControlAgentBody": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "title": "\"start\", \"shutdown\", \"restart\""
+        },
+        "reason": {
+          "type": "string",
+          "title": "Optional reason for the action"
+        }
+      },
+      "title": "Agent Control Messages"
+    },
+    "MonitorServiceUnapplyPolicyBody": {
+      "type": "object"
+    },
+    "MonitorServiceUpdatePolicyBody": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "thresholds": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "e.g., {\"cpu\": \"80\", \"ram\": \"90\"}"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "e.g., [\"alert\", \"restart\"]"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "title": "Policy Messages"
+    },
+    "monitorBlockAgentResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "agentId": {
+          "type": "string"
+        },
+        "blocked": {
+          "type": "boolean"
+        }
+      }
+    },
+    "monitorControlAgentResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "agentId": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "monitorListPoliciesResponse": {
+      "type": "object",
+      "properties": {
+        "policies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/monitorPolicy"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "monitorPolicy": {
+      "type": "object",
+      "properties": {
+        "policyId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "thresholds": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "appliedAgents": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "List of agent IDs this policy is applied to"
+        }
+      }
+    },
+    "monitorPolicyRequest": {
+      "type": "object",
+      "properties": {
+        "policyId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "thresholds": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "e.g., {\"cpu\": \"80\", \"ram\": \"90\"}"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "e.g., [\"alert\", \"restart\"]"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "title": "Policy Messages"
+    },
+    "monitorPolicyResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "policyId": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "monitorRegisterRequest": {
+      "type": "object",
+      "properties": {
+        "hostname": {
+          "type": "string",
+          "example": "server-01",
+          "description": "Hostname of the server where agent is installed"
+        },
+        "ipAddress": {
+          "type": "string",
+          "example": "192.168.1.10",
+          "description": "IP address of the agent"
+        },
+        "agentVersion": {
+          "type": "string",
+          "example": "1.0.0",
+          "description": "Version of the monitoring agent"
+        },
+        "metadata": {
+          "type": "object",
+          "example": {
+            "location": "datacenter-01",
+            "environment": "production",
+            "os": "linux",
+            "team": "infrastructure"
+          },
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Additional metadata (location, environment, team, tier, etc.)"
+        }
+      },
+      "title": "Registration messages"
+    },
+    "monitorRegisterResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true,
+          "description": "Whether registration was successful"
+        },
+        "message": {
+          "type": "string",
+          "example": "Agent registered successfully",
+          "description": "Human-readable message about registration status"
+        },
+        "agentId": {
+          "type": "string",
+          "example": "agent-a3f5c2d1",
+          "description": "Unique agent identifier (save this for future requests)"
+        },
+        "accessToken": {
+          "type": "string",
+          "example": "3f4a8b2c1d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2",
+          "description": "Authentication token for API requests (64-character hex string)"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "int64",
+          "example": 1737849600,
+          "description": "Unix timestamp when the token expires (typically 1 year from registration)"
+        }
+      }
+    },
     "monitorStatsRequest": {
       "type": "object",
       "properties": {
         "hostname": {
-          "type": "string"
+          "type": "string",
+          "example": "server-01",
+          "description": "Hostname of the monitored server"
         },
         "cpu": {
           "type": "number",
-          "format": "double"
+          "format": "double",
+          "example": 45.2,
+          "description": "CPU usage percentage (0-100)"
         },
         "ram": {
           "type": "number",
-          "format": "double"
+          "format": "double",
+          "example": 68.5,
+          "description": "RAM usage percentage (0-100)"
         },
         "disk": {
           "type": "number",
-          "format": "double"
+          "format": "double",
+          "example": 72.3,
+          "description": "Disk usage percentage (0-100)"
+        },
+        "agentId": {
+          "type": "string",
+          "example": "agent-a3f5c2d1",
+          "description": "Unique agent identifier assigned during registration"
+        },
+        "ipAddress": {
+          "type": "string",
+          "example": "192.168.1.10",
+          "description": "IP address of the agent"
+        },
+        "agentVersion": {
+          "type": "string",
+          "example": "1.0.0",
+          "description": "Version of the monitoring agent"
+        },
+        "metadata": {
+          "type": "object",
+          "example": {
+            "location": "datacenter-01",
+            "environment": "production",
+            "os": "linux"
+          },
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Additional metadata about the agent (location, environment, etc.)"
+        },
+        "accessToken": {
+          "type": "string",
+          "example": "3f4a8b2c1d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2",
+          "description": "Authentication token obtained during registration"
         }
       }
     },
@@ -128,11 +887,15 @@
       "type": "object",
       "properties": {
         "message": {
-          "type": "string"
+          "type": "string",
+          "example": "Stats recorded successfully",
+          "description": "Response message with stats information or status"
         },
         "timestamp": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "example": 1737882600,
+          "description": "Unix timestamp of the response"
         }
       }
     },
@@ -164,5 +927,18 @@
         }
       }
     }
-  }
+  },
+  "securityDefinitions": {
+    "bearer": {
+      "type": "apiKey",
+      "description": "Authentication token for agent. Format: Bearer \u003caccess_token\u003e",
+      "name": "Authorization",
+      "in": "header"
+    }
+  },
+  "security": [
+    {
+      "bearer": []
+    }
+  ]
 }

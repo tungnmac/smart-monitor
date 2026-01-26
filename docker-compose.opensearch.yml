@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: smart-monitor-opensearch
+    environment:
+      - discovery.type=single-node
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=SmartMonitor@2024
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    networks:
+      - smart-monitor
+    healthcheck:
+      test: ["CMD-SHELL", "curl -k -s https://localhost:9200 -u admin:SmartMonitor@2024 | grep -q 'opensearch'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: OpenSearch Dashboards for visualization
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.11.0
+    container_name: smart-monitor-dashboards
+    ports:
+      - "5601:5601"
+    environment:
+      - OPENSEARCH_HOSTS='["https://opensearch:9200"]'
+      - OPENSEARCH_USERNAME=admin
+      - OPENSEARCH_PASSWORD=SmartMonitor@2024
+      - SERVER_SSL_ENABLED=false
+      - OPENSEARCH_SSL_VERIFICATIONMODE=none
+    networks:
+      - smart-monitor
+    depends_on:
+      - opensearch
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:5601/api/status | grep -q 'state.*ok'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  opensearch-data:
+    driver: local
+
+networks:
+  smart-monitor:
+    driver: bridge

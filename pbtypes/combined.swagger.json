@@ -55,6 +55,39 @@
     "application/json"
   ],
   "paths": {
+    "/v1/agent/register": {
+      "post": {
+        "summary": "Register Agent - Agent must register first before streaming",
+        "operationId": "MonitorService_RegisterAgent",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/monitorRegisterResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/monitorRegisterRequest"
+            }
+          }
+        ],
+        "tags": [
+          "MonitorService"
+        ]
+      }
+    },
     "/v1/containers": {
       "get": {
         "operationId": "ContainerService_GetContainers",
@@ -470,6 +503,41 @@
             "required": false,
             "type": "number",
             "format": "double"
+          },
+          {
+            "name": "agentId",
+            "description": "Unique agent identifier",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "ipAddress",
+            "description": "Agent's IP address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "agentVersion",
+            "description": "Agent version",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "metadata",
+            "description": "Additional metadata (location, tags, etc.)",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "accessToken",
+            "description": "Authentication token",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -479,7 +547,7 @@
     },
     "/v1/stats/stream": {
       "post": {
-        "summary": "Stream từ Agent gửi về Server",
+        "summary": "Stream từ Agent gửi về Server (requires authentication)",
         "operationId": "MonitorService_StreamStats",
         "responses": {
           "200": {
@@ -808,6 +876,51 @@
         }
       }
     },
+    "monitorRegisterRequest": {
+      "type": "object",
+      "properties": {
+        "hostname": {
+          "type": "string"
+        },
+        "ipAddress": {
+          "type": "string"
+        },
+        "agentVersion": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "title": "Registration messages"
+    },
+    "monitorRegisterResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "agentId": {
+          "type": "string",
+          "title": "Assigned agent ID"
+        },
+        "accessToken": {
+          "type": "string",
+          "title": "Authentication token"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "int64",
+          "title": "Token expiration timestamp"
+        }
+      }
+    },
     "monitorStatsRequest": {
       "type": "object",
       "properties": {
@@ -825,6 +938,29 @@
         "disk": {
           "type": "number",
           "format": "double"
+        },
+        "agentId": {
+          "type": "string",
+          "title": "Unique agent identifier"
+        },
+        "ipAddress": {
+          "type": "string",
+          "title": "Agent's IP address"
+        },
+        "agentVersion": {
+          "type": "string",
+          "title": "Agent version"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Additional metadata (location, tags, etc.)"
+        },
+        "accessToken": {
+          "type": "string",
+          "title": "Authentication token"
         }
       }
     },

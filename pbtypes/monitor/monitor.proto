@@ -4,32 +4,387 @@ package monitor;
 option go_package = "smart-monitor/pbtypes/monitor";
 
 import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "Smart Monitor API";
+    version: "1.0.0";
+    description: "API for Smart Monitor - Distributed System Monitoring Platform with Agent Registration and Authentication";
+    contact: {
+      name: "Smart Monitor Team";
+      email: "support@smartmonitor.example.com";
+    };
+  };
+  schemes: HTTP;
+  schemes: HTTPS;
+  consumes: "application/json";
+  produces: "application/json";
+  security_definitions: {
+    security: {
+      key: "bearer";
+      value: {
+        type: TYPE_API_KEY;
+        in: IN_HEADER;
+        name: "Authorization";
+        description: "Authentication token for agent. Format: Bearer <access_token>";
+      }
+    }
+  };
+  security: {
+    security_requirement: {
+      key: "bearer";
+    }
+  };
+};
 
 service MonitorService {
-  // Stream từ Agent gửi về Server
+  // Register Agent - Agent must register first before streaming
+  rpc RegisterAgent (RegisterRequest) returns (RegisterResponse) {
+    option (google.api.http) = {
+      post: "/v1/agent/register"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Register a new monitoring agent";
+      description: "Register a new agent with the backend system. Returns unique agent ID and access token for authentication.";
+      tags: "Agent Management";
+      responses: {
+        key: "200";
+        value: {
+          description: "Agent registered successfully";
+          examples: {
+            key: "application/json";
+            value: '{"success":true,"message":"Agent registered successfully","agent_id":"agent-a3f5c2d1","access_token":"3f4a8b2c1d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2","expires_at":1737849600}';
+          }
+        }
+      };
+      responses: {
+        key: "400";
+        value: {
+          description: "Bad request - missing or invalid parameters";
+        }
+      };
+    };
+  }
+
+  // Control Agent Operations
+  rpc ControlAgent (ControlAgentRequest) returns (ControlAgentResponse) {
+    option (google.api.http) = {
+      post: "/v1/agent/{agent_id}/control"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Control agent operations (start, shutdown, restart)";
+      description: "Send control commands to agent: start, shutdown, restart";
+      tags: "Agent Control";
+    };
+  }
+
+  // Block/Unblock Agent
+  rpc BlockAgent (BlockAgentRequest) returns (BlockAgentResponse) {
+    option (google.api.http) = {
+      post: "/v1/agent/{agent_id}/block"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Block or unblock an agent";
+      description: "Enable or disable blocking for an agent";
+      tags: "Agent Control";
+    };
+  }
+
+  // Policy Management
+  rpc AddPolicy (PolicyRequest) returns (PolicyResponse) {
+    option (google.api.http) = {
+      post: "/v1/policies"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Add a new monitoring policy";
+      description: "Create a new policy with thresholds and actions";
+      tags: "Policy Management";
+    };
+  }
+
+  rpc UpdatePolicy (PolicyRequest) returns (PolicyResponse) {
+    option (google.api.http) = {
+      put: "/v1/policies/{policy_id}"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Update an existing policy";
+      description: "Modify policy configuration";
+      tags: "Policy Management";
+    };
+  }
+
+  rpc RemovePolicy (RemovePolicyRequest) returns (PolicyResponse) {
+    option (google.api.http) = {
+      delete: "/v1/policies/{policy_id}"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Remove a policy";
+      description: "Delete an existing policy";
+      tags: "Policy Management";
+    };
+  }
+
+  rpc ListPolicies (ListPoliciesRequest) returns (ListPoliciesResponse) {
+    option (google.api.http) = {
+      get: "/v1/policies"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "List all policies";
+      description: "Retrieve all monitoring policies";
+      tags: "Policy Management";
+    };
+  }
+
+  rpc ApplyPolicy (ApplyPolicyRequest) returns (PolicyResponse) {
+    option (google.api.http) = {
+      post: "/v1/agent/{agent_id}/policy/{policy_id}/apply"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Apply policy to agent";
+      description: "Apply a policy to specific agent";
+      tags: "Policy Management";
+    };
+  }
+
+  rpc UnapplyPolicy (UnapplyPolicyRequest) returns (PolicyResponse) {
+    option (google.api.http) = {
+      post: "/v1/agent/{agent_id}/policy/{policy_id}/unapply"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Unapply policy from agent";
+      description: "Remove policy from specific agent";
+      tags: "Policy Management";
+    };
+  }
+
+  // Stream từ Agent gửi về Server (requires authentication)
   rpc StreamStats (stream StatsRequest) returns (StatsResponse) {
     option (google.api.http) = {
       post: "/v1/stats/stream"
       body: "*"
     };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Stream system metrics from agent";
+      description: "Agent streams real-time system metrics (CPU, RAM, Disk) to backend. Requires valid authentication token.";
+      tags: "Metrics";
+      security: {
+        security_requirement: {
+          key: "bearer";
+        }
+      };
+    };
   }
 
-  // Thêm một RPC unary để lấy stats
+  // Get stats for a specific hostname
   rpc GetStats (StatsRequest) returns (StatsResponse) {
     option (google.api.http) = {
-      get: "/v1/stats"
+      get: "/v1/stats/{hostname}"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Get stats for a specific host";
+      description: "Retrieve the latest system metrics for a specific hostname or agent ID.";
+      tags: "Metrics";
+      responses: {
+        key: "200";
+        value: {
+          description: "Stats retrieved successfully";
+          examples: {
+            key: "application/json";
+            value: '{"message":"Stats for server-01: CPU=45.20%, RAM=68.50%, Disk=72.30% (Last received: 2026-01-26T10:30:00Z)","timestamp":1737882600}';
+          }
+        }
+      };
+      responses: {
+        key: "404";
+        value: {
+          description: "Host not found";
+        }
+      };
     };
   }
 }
 
 message StatsRequest {
-  string hostname = 1;
-  double cpu = 2;
-  double ram = 3;
-  double disk = 4;
+  string hostname = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Hostname of the monitored server";
+    example: "\"server-01\"";
+  }];
+  double cpu = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "CPU usage percentage (0-100)";
+    example: "45.2";
+  }];
+  double ram = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "RAM usage percentage (0-100)";
+    example: "68.5";
+  }];
+  double disk = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Disk usage percentage (0-100)";
+    example: "72.3";
+  }];
+  string agent_id = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Unique agent identifier assigned during registration";
+    example: "\"agent-a3f5c2d1\"";
+  }];
+  string ip_address = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "IP address of the agent";
+    example: "\"192.168.1.10\"";
+  }];
+  string agent_version = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Version of the monitoring agent";
+    example: "\"1.0.0\"";
+  }];
+  map<string, string> metadata = 8 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Additional metadata about the agent (location, environment, etc.)";
+    example: "{\"location\":\"datacenter-01\",\"environment\":\"production\",\"os\":\"linux\"}";
+  }];
+  string access_token = 9 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Authentication token obtained during registration";
+    example: "\"3f4a8b2c1d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2\"";
+  }];
 }
 
 message StatsResponse {
-  string message = 1;
-  int64 timestamp = 2;
+  string message = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Response message with stats information or status";
+    example: "\"Stats recorded successfully\"";
+  }];
+  int64 timestamp = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Unix timestamp of the response";
+    example: "1737882600";
+  }];
+}
+
+// Registration messages
+message RegisterRequest {
+  string hostname = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Hostname of the server where agent is installed";
+    example: "\"server-01\"";
+  }];
+  string ip_address = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "IP address of the agent";
+    example: "\"192.168.1.10\"";
+  }];
+  string agent_version = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Version of the monitoring agent";
+    example: "\"1.0.0\"";
+  }];
+  map<string, string> metadata = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Additional metadata (location, environment, team, tier, etc.)";
+    example: "{\"location\":\"datacenter-01\",\"environment\":\"production\",\"os\":\"linux\",\"team\":\"infrastructure\"}";
+  }];
+}
+
+message RegisterResponse {
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether registration was successful";
+    example: "true";
+  }];
+  string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Human-readable message about registration status";
+    example: "\"Agent registered successfully\"";
+  }];
+  string agent_id = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Unique agent identifier (save this for future requests)";
+    example: "\"agent-a3f5c2d1\"";
+  }];
+  string access_token = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Authentication token for API requests (64-character hex string)";
+    example: "\"3f4a8b2c1d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2\"";
+  }];
+  int64 expires_at = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Unix timestamp when the token expires (typically 1 year from registration)";
+    example: "1737849600";
+  }];
+}
+
+// Agent Control Messages
+message ControlAgentRequest {
+  string agent_id = 1;
+  string action = 2; // "start", "shutdown", "restart"
+  string reason = 3; // Optional reason for the action
+}
+
+message ControlAgentResponse {
+  bool success = 1;
+  string message = 2;
+  string agent_id = 3;
+  string action = 4;
+  int64 timestamp = 5;
+}
+
+// Block Agent Messages
+message BlockAgentRequest {
+  string agent_id = 1;
+  bool blocked = 2; // true to block, false to unblock
+  string reason = 3;
+}
+
+message BlockAgentResponse {
+  bool success = 1;
+  string message = 2;
+  string agent_id = 3;
+  bool blocked = 4;
+}
+
+// Policy Messages
+message PolicyRequest {
+  string policy_id = 1;
+  string name = 2;
+  string description = 3;
+  map<string, string> thresholds = 4; // e.g., {"cpu": "80", "ram": "90"}
+  repeated string actions = 5; // e.g., ["alert", "restart"]
+  map<string, string> metadata = 6;
+  bool enabled = 7;
+}
+
+message PolicyResponse {
+  bool success = 1;
+  string message = 2;
+  string policy_id = 3;
+  int64 timestamp = 4;
+}
+
+message RemovePolicyRequest {
+  string policy_id = 1;
+}
+
+message ListPoliciesRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message ListPoliciesResponse {
+  repeated Policy policies = 1;
+  int32 total = 2;
+}
+
+message Policy {
+  string policy_id = 1;
+  string name = 2;
+  string description = 3;
+  map<string, string> thresholds = 4;
+  repeated string actions = 5;
+  map<string, string> metadata = 6;
+  bool enabled = 7;
+  int64 created_at = 8;
+  int64 updated_at = 9;
+  repeated string applied_agents = 10; // List of agent IDs this policy is applied to
+}
+
+message ApplyPolicyRequest {
+  string agent_id = 1;
+  string policy_id = 2;
+}
+
+message UnapplyPolicyRequest {
+  string agent_id = 1;
+  string policy_id = 2;
 }

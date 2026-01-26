@@ -1,0 +1,80 @@
+# Git ignore file for Smart Monitor
+
+# Binaries
+backend/backend
+agent/agent
+monitor-test/monitor-test
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*.test
+*.out
+
+# Go workspace file
+go.work
+
+# Build artifacts
+/build/
+/dist/
+
+# Agent credentials
+agent/.agent_token
+.agent_token
+
+# Logs
+logs/
+*.log
+*.pid
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.iml
+.DS_Store
+
+# Dependencies
+vendor/
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Generated files
+*.pb.go
+*.pb.gw.go
+pbtypes/**/*.swagger.json
+!pbtypes/combined.swagger.json
+
+# Static swagger (optional - comment out if you want to track it)
+# backend/static/swagger.json
+# backend/static/api-docs.json
+
+# Coverage
+coverage.txt
+coverage.html
+*.cover
+
+# Docker
+.dockerignore
+
+# OS specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Backup files
+*.bak
+*.backup

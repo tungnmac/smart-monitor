@@ -1,0 +1,740 @@
+#!/bin/bash
+# Swagger Generator and Merger
+# Tạo và merge swagger documentation từ nhiều nguồn
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PBTYPES_DIR="$SCRIPT_DIR/../pbtypes"
+BACKEND_STATIC_DIR="$SCRIPT_DIR/../backend/static"
+OUTPUT_FILE="$BACKEND_STATIC_DIR/swagger.json"
+
+echo "🔄 Generating Swagger Documentation..."
+
+# Ensure output directory exists
+mkdir -p "$BACKEND_STATIC_DIR"
+
+# Start with base swagger template
+cat > "$OUTPUT_FILE" << 'EOF'
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Smart Monitor API",
+    "description": "Complete API documentation for Smart Monitor - Distributed System Monitoring Platform\n\n## Features\n- Agent Registration & Authentication\n- Real-time Metrics Streaming\n- System Monitoring (CPU, RAM, Disk)\n- Health & Readiness Checks\n\n## Quick Start\n1. Register agent: POST /v1/agent/register\n2. Stream metrics: POST /v1/stats/stream\n3. Query stats: GET /v1/stats/{hostname}\n\n## Authentication\nMost endpoints require access token obtained during registration.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Smart Monitor Team",
+      "email": "support@smartmonitor.example.com",
+      "url": "https://smartmonitor.example.com"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "host": "localhost:8080",
+  "basePath": "/",
+  "schemes": ["http", "https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "securityDefinitions": {
+    "ApiKeyAuth": {
+      "type": "apiKey",
+      "name": "access_token",
+      "in": "query",
+      "description": "Access token obtained from agent registration"
+    },
+    "BearerAuth": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "Bearer token format: 'Bearer {access_token}'"
+    }
+  },
+  "tags": [
+    {
+      "name": "Agent Management",
+      "description": "Agent registration and lifecycle management",
+      "externalDocs": {
+        "description": "Agent Setup Guide",
+        "url": "/docs/AGENT_SETUP.md"
+      }
+    },
+    {
+      "name": "Metrics",
+      "description": "System metrics streaming and retrieval"
+    },
+    {
+      "name": "Health",
+      "description": "Service health and readiness checks"
+    },
+    {
+      "name": "Admin",
+      "description": "Administrative endpoints (future feature)"
+    }
+  ],
+  "paths": {
+    "/v1/agent/register": {
+      "post": {
+        "tags": ["Agent Management"],
+        "summary": "Register a new monitoring agent",
+        "description": "Register agent with backend. Returns agent_id and access_token. If agent already registered, returns existing credentials.",
+        "operationId": "registerAgent",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "description": "Agent registration information",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RegisterRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Registration successful",
+            "schema": {
+              "$ref": "#/definitions/RegisterResponse"
+            },
+            "examples": {
+              "application/json": {
+                "success": true,
+                "message": "Agent registered successfully",
+                "agent_id": "agent-a3f5c2d1",
+                "access_token": "3f4a8b2c1d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2",
+                "expires_at": 1737849600
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            },
+            "examples": {
+              "application/json": {
+                "success": false,
+                "message": "Hostname is required",
+                "code": "INVALID_REQUEST"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/stats/stream": {
+      "post": {
+        "tags": ["Metrics"],
+        "summary": "Stream system metrics",
+        "description": "Stream real-time system metrics. Requires valid access token. Recommended interval: 2-10 seconds.",
+        "operationId": "streamStats",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "security": [
+          {"ApiKeyAuth": []}
+        ],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "description": "System metrics data",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/StatsRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Metrics recorded successfully",
+            "schema": {
+              "$ref": "#/definitions/StatsResponse"
+            },
+            "examples": {
+              "application/json": {
+                "message": "Stats recorded successfully",
+                "timestamp": 1737882600
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid metrics data",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            },
+            "examples": {
+              "application/json": {
+                "message": "Invalid stats data: CPU value must be between 0 and 100",
+                "code": "VALIDATION_ERROR"
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication failed",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            },
+            "examples": {
+              "application/json": {
+                "message": "Authentication failed: invalid or expired token",
+                "code": "UNAUTHORIZED"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/stats/{hostname}": {
+      "get": {
+        "tags": ["Metrics"],
+        "summary": "Get stats for specific host",
+        "description": "Retrieve latest metrics for a hostname",
+        "operationId": "getStats",
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "name": "hostname",
+            "in": "path",
+            "description": "Hostname to query",
+            "required": true,
+            "type": "string",
+            "default": "server-01"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stats retrieved successfully",
+            "schema": {
+              "$ref": "#/definitions/StatsDetailResponse"
+            },
+            "examples": {
+              "application/json": {
+                "hostname": "server-01",
+                "agent_id": "agent-a3f5c2d1",
+                "ip_address": "192.168.1.10",
+                "cpu": 45.2,
+                "ram": 68.5,
+                "disk": 72.3,
+                "timestamp": 1737882600,
+                "last_received": "2026-01-26T10:30:00Z",
+                "status": "online"
+              }
+            }
+          },
+          "404": {
+            "description": "Host not found",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/stats": {
+      "get": {
+        "tags": ["Metrics"],
+        "summary": "Get all stats",
+        "description": "Retrieve metrics for all monitored hosts",
+        "operationId": "getAllStats",
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "Stats list retrieved",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "stats": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/StatsDetailResponse"
+                  }
+                },
+                "total": {
+                  "type": "integer",
+                  "example": 3
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents": {
+      "get": {
+        "tags": ["Agent Management"],
+        "summary": "List all registered agents",
+        "description": "Get list of all registered agents with their status (future feature)",
+        "operationId": "listAgents",
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "Agents list retrieved",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "agents": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/AgentInfo"
+                  }
+                },
+                "total": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/{agent_id}": {
+      "get": {
+        "tags": ["Agent Management"],
+        "summary": "Get agent details",
+        "description": "Get detailed information about specific agent (future feature)",
+        "operationId": "getAgent",
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent details",
+            "schema": {
+              "$ref": "#/definitions/AgentInfo"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Agent Management"],
+        "summary": "Revoke agent access",
+        "description": "Revoke agent's access token (future feature)",
+        "operationId": "revokeAgent",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent revoked"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Health check",
+        "description": "Check if service is healthy",
+        "operationId": "healthCheck",
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "schema": {
+              "$ref": "#/definitions/HealthResponse"
+            },
+            "examples": {
+              "application/json": {
+                "status": "healthy",
+                "timestamp": 1737882600,
+                "service": "smart-monitor-backend",
+                "version": "1.0.0"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Readiness check",
+        "description": "Check if service is ready to accept traffic",
+        "operationId": "readyCheck",
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "Service is ready",
+            "schema": {
+              "$ref": "#/definitions/ReadyResponse"
+            }
+          }
+        }
+      }
+    },
+    "/live": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Liveness check",
+        "description": "Check if service is alive",
+        "operationId": "liveCheck",
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "Service is alive"
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Prometheus metrics",
+        "description": "Prometheus-compatible metrics endpoint",
+        "operationId": "prometheusMetrics",
+        "produces": ["text/plain"],
+        "responses": {
+          "200": {
+            "description": "Metrics in Prometheus format"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "RegisterRequest": {
+      "type": "object",
+      "required": ["hostname"],
+      "properties": {
+        "hostname": {
+          "type": "string",
+          "description": "Hostname of the monitored server",
+          "example": "server-01"
+        },
+        "ip_address": {
+          "type": "string",
+          "description": "IP address of the agent",
+          "example": "192.168.1.10"
+        },
+        "agent_version": {
+          "type": "string",
+          "description": "Version of monitoring agent",
+          "example": "1.0.0"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Custom metadata tags",
+          "example": {
+            "location": "datacenter-01",
+            "environment": "production",
+            "os": "linux",
+            "team": "infrastructure",
+            "tier": "web"
+          }
+        }
+      }
+    },
+    "RegisterResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true
+        },
+        "message": {
+          "type": "string",
+          "example": "Agent registered successfully"
+        },
+        "agent_id": {
+          "type": "string",
+          "description": "Unique agent identifier",
+          "example": "agent-a3f5c2d1"
+        },
+        "access_token": {
+          "type": "string",
+          "description": "64-character authentication token",
+          "example": "3f4a8b2c1d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2"
+        },
+        "expires_at": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Token expiration timestamp",
+          "example": 1737849600
+        }
+      }
+    },
+    "StatsRequest": {
+      "type": "object",
+      "required": ["hostname", "agent_id", "access_token", "cpu", "ram", "disk"],
+      "properties": {
+        "hostname": {
+          "type": "string",
+          "example": "server-01"
+        },
+        "agent_id": {
+          "type": "string",
+          "example": "agent-a3f5c2d1"
+        },
+        "access_token": {
+          "type": "string",
+          "example": "3f4a8b2c1d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2"
+        },
+        "ip_address": {
+          "type": "string",
+          "example": "192.168.1.10"
+        },
+        "agent_version": {
+          "type": "string",
+          "example": "1.0.0"
+        },
+        "cpu": {
+          "type": "number",
+          "format": "double",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "CPU usage percentage",
+          "example": 45.2
+        },
+        "ram": {
+          "type": "number",
+          "format": "double",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "RAM usage percentage",
+          "example": 68.5
+        },
+        "disk": {
+          "type": "number",
+          "format": "double",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Disk usage percentage",
+          "example": 72.3
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "StatsResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "example": "Stats recorded successfully"
+        },
+        "timestamp": {
+          "type": "integer",
+          "format": "int64",
+          "example": 1737882600
+        }
+      }
+    },
+    "StatsDetailResponse": {
+      "type": "object",
+      "properties": {
+        "hostname": {
+          "type": "string",
+          "example": "server-01"
+        },
+        "agent_id": {
+          "type": "string",
+          "example": "agent-a3f5c2d1"
+        },
+        "ip_address": {
+          "type": "string",
+          "example": "192.168.1.10"
+        },
+        "cpu": {
+          "type": "number",
+          "format": "double",
+          "example": 45.2
+        },
+        "ram": {
+          "type": "number",
+          "format": "double",
+          "example": 68.5
+        },
+        "disk": {
+          "type": "number",
+          "format": "double",
+          "example": 72.3
+        },
+        "timestamp": {
+          "type": "integer",
+          "format": "int64",
+          "example": 1737882600
+        },
+        "last_received": {
+          "type": "string",
+          "format": "date-time",
+          "example": "2026-01-26T10:30:00Z"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["online", "offline", "unknown"],
+          "example": "online"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "AgentInfo": {
+      "type": "object",
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "example": "agent-a3f5c2d1"
+        },
+        "hostname": {
+          "type": "string",
+          "example": "server-01"
+        },
+        "ip_address": {
+          "type": "string",
+          "example": "192.168.1.10"
+        },
+        "agent_version": {
+          "type": "string",
+          "example": "1.0.0"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "suspended", "revoked"],
+          "example": "active"
+        },
+        "registered_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_seen": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "HealthResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "healthy"
+        },
+        "timestamp": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "service": {
+          "type": "string",
+          "example": "smart-monitor-backend"
+        },
+        "version": {
+          "type": "string",
+          "example": "1.0.0"
+        }
+      }
+    },
+    "ReadyResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "ready"
+        },
+        "timestamp": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "active_hosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "example": ["server-01", "server-02", "server-03"]
+        }
+      }
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": false
+        },
+        "message": {
+          "type": "string",
+          "description": "Error description",
+          "example": "Invalid request parameters"
+        },
+        "code": {
+          "type": "string",
+          "description": "Error code",
+          "enum": [
+            "INVALID_REQUEST",
+            "UNAUTHORIZED",
+            "NOT_FOUND",
+            "VALIDATION_ERROR",
+            "INTERNAL_ERROR"
+          ],
+          "example": "INVALID_REQUEST"
+        },
+        "details": {
+          "type": "object",
+          "description": "Additional error details"
+        }
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "Complete documentation and setup guide",
+    "url": "/docs/AGENT_SETUP.md"
+  }
+}
+EOF
+
+echo "✅ Base swagger generated: $OUTPUT_FILE"
+
+# Copy to alternative location for compatibility
+cp "$OUTPUT_FILE" "$BACKEND_STATIC_DIR/api-docs.json"
+echo "✅ Copied to: $BACKEND_STATIC_DIR/api-docs.json"
+
+# Show file size
+FILE_SIZE=$(du -h "$OUTPUT_FILE" | cut -f1)
+echo "📊 File size: $FILE_SIZE"
+
+echo ""
+echo "🎉 Swagger documentation generated successfully!"
+echo "📁 Location: $OUTPUT_FILE"
+echo "🌐 Access at: http://localhost:8080/swagger/"
+echo ""
+echo "💡 To add new endpoints:"
+echo "   1. Edit this script: $0"
+echo "   2. Add your endpoint to 'paths' section"
+echo "   3. Add models to 'definitions' section"
+echo "   4. Run: ./generate-swagger.sh"

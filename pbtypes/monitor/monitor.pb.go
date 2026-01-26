@@ -2,11 +2,12 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v6.33.2
-// source: monitor/monitor.proto
+// source: monitor.proto
 
 package monitor
 
 import (
+	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -28,13 +29,18 @@ type StatsRequest struct {
 	Cpu           float64                `protobuf:"fixed64,2,opt,name=cpu,proto3" json:"cpu,omitempty"`
 	Ram           float64                `protobuf:"fixed64,3,opt,name=ram,proto3" json:"ram,omitempty"`
 	Disk          float64                `protobuf:"fixed64,4,opt,name=disk,proto3" json:"disk,omitempty"`
+	AgentId       string                 `protobuf:"bytes,5,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	IpAddress     string                 `protobuf:"bytes,6,opt,name=ip_address,json=ipAddress,proto3" json:"ip_address,omitempty"`
+	AgentVersion  string                 `protobuf:"bytes,7,opt,name=agent_version,json=agentVersion,proto3" json:"agent_version,omitempty"`
+	Metadata      map[string]string      `protobuf:"bytes,8,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	AccessToken   string                 `protobuf:"bytes,9,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *StatsRequest) Reset() {
 	*x = StatsRequest{}
-	mi := &file_monitor_monitor_proto_msgTypes[0]
+	mi := &file_monitor_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -46,7 +52,7 @@ func (x *StatsRequest) String() string {
 func (*StatsRequest) ProtoMessage() {}
 
 func (x *StatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_monitor_monitor_proto_msgTypes[0]
+	mi := &file_monitor_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -59,7 +65,7 @@ func (x *StatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatsRequest.ProtoReflect.Descriptor instead.
 func (*StatsRequest) Descriptor() ([]byte, []int) {
-	return file_monitor_monitor_proto_rawDescGZIP(), []int{0}
+	return file_monitor_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *StatsRequest) GetHostname() string {
@@ -90,6 +96,41 @@ func (x *StatsRequest) GetDisk() float64 {
 	return 0
 }
 
+func (x *StatsRequest) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *StatsRequest) GetIpAddress() string {
+	if x != nil {
+		return x.IpAddress
+	}
+	return ""
+}
+
+func (x *StatsRequest) GetAgentVersion() string {
+	if x != nil {
+		return x.AgentVersion
+	}
+	return ""
+}
+
+func (x *StatsRequest) GetMetadata() map[string]string {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
+func (x *StatsRequest) GetAccessToken() string {
+	if x != nil {
+		return x.AccessToken
+	}
+	return ""
+}
+
 type StatsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
@@ -100,7 +141,7 @@ type StatsResponse struct {
 
 func (x *StatsResponse) Reset() {
 	*x = StatsResponse{}
-	mi := &file_monitor_monitor_proto_msgTypes[1]
+	mi := &file_monitor_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -112,7 +153,7 @@ func (x *StatsResponse) String() string {
 func (*StatsResponse) ProtoMessage() {}
 
 func (x *StatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_monitor_monitor_proto_msgTypes[1]
+	mi := &file_monitor_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -125,7 +166,7 @@ func (x *StatsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatsResponse.ProtoReflect.Descriptor instead.
 func (*StatsResponse) Descriptor() ([]byte, []int) {
-	return file_monitor_monitor_proto_rawDescGZIP(), []int{1}
+	return file_monitor_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *StatsResponse) GetMessage() string {
@@ -142,72 +183,1201 @@ func (x *StatsResponse) GetTimestamp() int64 {
 	return 0
 }
 
-var File_monitor_monitor_proto protoreflect.FileDescriptor
+// Registration messages
+type RegisterRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Hostname      string                 `protobuf:"bytes,1,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	IpAddress     string                 `protobuf:"bytes,2,opt,name=ip_address,json=ipAddress,proto3" json:"ip_address,omitempty"`
+	AgentVersion  string                 `protobuf:"bytes,3,opt,name=agent_version,json=agentVersion,proto3" json:"agent_version,omitempty"`
+	Metadata      map[string]string      `protobuf:"bytes,4,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
 
-const file_monitor_monitor_proto_rawDesc = "" +
+func (x *RegisterRequest) Reset() {
+	*x = RegisterRequest{}
+	mi := &file_monitor_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RegisterRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegisterRequest) ProtoMessage() {}
+
+func (x *RegisterRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_monitor_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegisterRequest.ProtoReflect.Descriptor instead.
+func (*RegisterRequest) Descriptor() ([]byte, []int) {
+	return file_monitor_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *RegisterRequest) GetHostname() string {
+	if x != nil {
+		return x.Hostname
+	}
+	return ""
+}
+
+func (x *RegisterRequest) GetIpAddress() string {
+	if x != nil {
+		return x.IpAddress
+	}
+	return ""
+}
+
+func (x *RegisterRequest) GetAgentVersion() string {
+	if x != nil {
+		return x.AgentVersion
+	}
+	return ""
+}
+
+func (x *RegisterRequest) GetMetadata() map[string]string {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
+type RegisterResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	AgentId       string                 `protobuf:"bytes,3,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	AccessToken   string                 `protobuf:"bytes,4,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	ExpiresAt     int64                  `protobuf:"varint,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RegisterResponse) Reset() {
+	*x = RegisterResponse{}
+	mi := &file_monitor_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RegisterResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegisterResponse) ProtoMessage() {}
+
+func (x *RegisterResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_monitor_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegisterResponse.ProtoReflect.Descriptor instead.
+func (*RegisterResponse) Descriptor() ([]byte, []int) {
+	return file_monitor_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *RegisterResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *RegisterResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *RegisterResponse) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *RegisterResponse) GetAccessToken() string {
+	if x != nil {
+		return x.AccessToken
+	}
+	return ""
+}
+
+func (x *RegisterResponse) GetExpiresAt() int64 {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return 0
+}
+
+// Agent Control Messages
+type ControlAgentRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgentId       string                 `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	Action        string                 `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"` // "start", "shutdown", "restart"
+	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"` // Optional reason for the action
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ControlAgentRequest) Reset() {
+	*x = ControlAgentRequest{}
+	mi := &file_monitor_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ControlAgentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ControlAgentRequest) ProtoMessage() {}
+
+func (x *ControlAgentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_monitor_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ControlAgentRequest.ProtoReflect.Descriptor instead.
+func (*ControlAgentRequest) Descriptor() ([]byte, []int) {
+	return file_monitor_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ControlAgentRequest) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *ControlAgentRequest) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *ControlAgentRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type ControlAgentResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	AgentId       string                 `protobuf:"bytes,3,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	Action        string                 `protobuf:"bytes,4,opt,name=action,proto3" json:"action,omitempty"`
+	Timestamp     int64                  `protobuf:"varint,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ControlAgentResponse) Reset() {
+	*x = ControlAgentResponse{}
+	mi := &file_monitor_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ControlAgentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ControlAgentResponse) ProtoMessage() {}
+
+func (x *ControlAgentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_monitor_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ControlAgentResponse.ProtoReflect.Descriptor instead.
+func (*ControlAgentResponse) Descriptor() ([]byte, []int) {
+	return file_monitor_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ControlAgentResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *ControlAgentResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *ControlAgentResponse) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *ControlAgentResponse) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *ControlAgentResponse) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+// Block Agent Messages
+type BlockAgentRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgentId       string                 `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	Blocked       bool                   `protobuf:"varint,2,opt,name=blocked,proto3" json:"blocked,omitempty"` // true to block, false to unblock
+	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BlockAgentRequest) Reset() {
+	*x = BlockAgentRequest{}
+	mi := &file_monitor_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BlockAgentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BlockAgentRequest) ProtoMessage() {}
+
+func (x *BlockAgentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_monitor_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BlockAgentRequest.ProtoReflect.Descriptor instead.
+func (*BlockAgentRequest) Descriptor() ([]byte, []int) {
+	return file_monitor_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *BlockAgentRequest) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *BlockAgentRequest) GetBlocked() bool {
+	if x != nil {
+		return x.Blocked
+	}
+	return false
+}
+
+func (x *BlockAgentRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type BlockAgentResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	AgentId       string                 `protobuf:"bytes,3,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	Blocked       bool                   `protobuf:"varint,4,opt,name=blocked,proto3" json:"blocked,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BlockAgentResponse) Reset() {
+	*x = BlockAgentResponse{}
+	mi := &file_monitor_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BlockAgentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BlockAgentResponse) ProtoMessage() {}
+
+func (x *BlockAgentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_monitor_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BlockAgentResponse.ProtoReflect.Descriptor instead.
+func (*BlockAgentResponse) Descriptor() ([]byte, []int) {
+	return file_monitor_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *BlockAgentResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *BlockAgentResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *BlockAgentResponse) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *BlockAgentResponse) GetBlocked() bool {
+	if x != nil {
+		return x.Blocked
+	}
+	return false
+}
+
+// Policy Messages
+type PolicyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PolicyId      string                 `protobuf:"bytes,1,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Thresholds    map[string]string      `protobuf:"bytes,4,rep,name=thresholds,proto3" json:"thresholds,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // e.g., {"cpu": "80", "ram": "90"}
+	Actions       []string               `protobuf:"bytes,5,rep,name=actions,proto3" json:"actions,omitempty"`                                                                                 // e.g., ["alert", "restart"]
+	Metadata      map[string]string      `protobuf:"bytes,6,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Enabled       bool                   `protobuf:"varint,7,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PolicyRequest) Reset() {
+	*x = PolicyRequest{}
+	mi := &file_monitor_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PolicyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PolicyRequest) ProtoMessage() {}
+
+func (x *PolicyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_monitor_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PolicyRequest.ProtoReflect.Descriptor instead.
+func (*PolicyRequest) Descriptor() ([]byte, []int) {
+	return file_monitor_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *PolicyRequest) GetPolicyId() string {
+	if x != nil {
+		return x.PolicyId
+	}
+	return ""
+}
+
+func (x *PolicyRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *PolicyRequest) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *PolicyRequest) GetThresholds() map[string]string {
+	if x != nil {
+		return x.Thresholds
+	}
+	return nil
+}
+
+func (x *PolicyRequest) GetActions() []string {
+	if x != nil {
+		return x.Actions
+	}
+	return nil
+}
+
+func (x *PolicyRequest) GetMetadata() map[string]string {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
+func (x *PolicyRequest) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+type PolicyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	PolicyId      string                 `protobuf:"bytes,3,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
+	Timestamp     int64                  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PolicyResponse) Reset() {
+	*x = PolicyResponse{}
+	mi := &file_monitor_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PolicyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PolicyResponse) ProtoMessage() {}
+
+func (x *PolicyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_monitor_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PolicyResponse.ProtoReflect.Descriptor instead.
+func (*PolicyResponse) Descriptor() ([]byte, []int) {
+	return file_monitor_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *PolicyResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *PolicyResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *PolicyResponse) GetPolicyId() string {
+	if x != nil {
+		return x.PolicyId
+	}
+	return ""
+}
+
+func (x *PolicyResponse) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+type RemovePolicyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PolicyId      string                 `protobuf:"bytes,1,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemovePolicyRequest) Reset() {
+	*x = RemovePolicyRequest{}
+	mi := &file_monitor_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemovePolicyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemovePolicyRequest) ProtoMessage() {}
+
+func (x *RemovePolicyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_monitor_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemovePolicyRequest.ProtoReflect.Descriptor instead.
+func (*RemovePolicyRequest) Descriptor() ([]byte, []int) {
+	return file_monitor_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *RemovePolicyRequest) GetPolicyId() string {
+	if x != nil {
+		return x.PolicyId
+	}
+	return ""
+}
+
+type ListPoliciesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Page          int32                  `protobuf:"varint,1,opt,name=page,proto3" json:"page,omitempty"`
+	PageSize      int32                  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPoliciesRequest) Reset() {
+	*x = ListPoliciesRequest{}
+	mi := &file_monitor_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPoliciesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPoliciesRequest) ProtoMessage() {}
+
+func (x *ListPoliciesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_monitor_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPoliciesRequest.ProtoReflect.Descriptor instead.
+func (*ListPoliciesRequest) Descriptor() ([]byte, []int) {
+	return file_monitor_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ListPoliciesRequest) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *ListPoliciesRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+type ListPoliciesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Policies      []*Policy              `protobuf:"bytes,1,rep,name=policies,proto3" json:"policies,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPoliciesResponse) Reset() {
+	*x = ListPoliciesResponse{}
+	mi := &file_monitor_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPoliciesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPoliciesResponse) ProtoMessage() {}
+
+func (x *ListPoliciesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_monitor_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPoliciesResponse.ProtoReflect.Descriptor instead.
+func (*ListPoliciesResponse) Descriptor() ([]byte, []int) {
+	return file_monitor_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ListPoliciesResponse) GetPolicies() []*Policy {
+	if x != nil {
+		return x.Policies
+	}
+	return nil
+}
+
+func (x *ListPoliciesResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type Policy struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PolicyId      string                 `protobuf:"bytes,1,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Thresholds    map[string]string      `protobuf:"bytes,4,rep,name=thresholds,proto3" json:"thresholds,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Actions       []string               `protobuf:"bytes,5,rep,name=actions,proto3" json:"actions,omitempty"`
+	Metadata      map[string]string      `protobuf:"bytes,6,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Enabled       bool                   `protobuf:"varint,7,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	CreatedAt     int64                  `protobuf:"varint,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     int64                  `protobuf:"varint,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	AppliedAgents []string               `protobuf:"bytes,10,rep,name=applied_agents,json=appliedAgents,proto3" json:"applied_agents,omitempty"` // List of agent IDs this policy is applied to
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Policy) Reset() {
+	*x = Policy{}
+	mi := &file_monitor_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Policy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Policy) ProtoMessage() {}
+
+func (x *Policy) ProtoReflect() protoreflect.Message {
+	mi := &file_monitor_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Policy.ProtoReflect.Descriptor instead.
+func (*Policy) Descriptor() ([]byte, []int) {
+	return file_monitor_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *Policy) GetPolicyId() string {
+	if x != nil {
+		return x.PolicyId
+	}
+	return ""
+}
+
+func (x *Policy) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Policy) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *Policy) GetThresholds() map[string]string {
+	if x != nil {
+		return x.Thresholds
+	}
+	return nil
+}
+
+func (x *Policy) GetActions() []string {
+	if x != nil {
+		return x.Actions
+	}
+	return nil
+}
+
+func (x *Policy) GetMetadata() map[string]string {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
+func (x *Policy) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *Policy) GetCreatedAt() int64 {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return 0
+}
+
+func (x *Policy) GetUpdatedAt() int64 {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return 0
+}
+
+func (x *Policy) GetAppliedAgents() []string {
+	if x != nil {
+		return x.AppliedAgents
+	}
+	return nil
+}
+
+type ApplyPolicyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgentId       string                 `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	PolicyId      string                 `protobuf:"bytes,2,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ApplyPolicyRequest) Reset() {
+	*x = ApplyPolicyRequest{}
+	mi := &file_monitor_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ApplyPolicyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ApplyPolicyRequest) ProtoMessage() {}
+
+func (x *ApplyPolicyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_monitor_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ApplyPolicyRequest.ProtoReflect.Descriptor instead.
+func (*ApplyPolicyRequest) Descriptor() ([]byte, []int) {
+	return file_monitor_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *ApplyPolicyRequest) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *ApplyPolicyRequest) GetPolicyId() string {
+	if x != nil {
+		return x.PolicyId
+	}
+	return ""
+}
+
+type UnapplyPolicyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgentId       string                 `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	PolicyId      string                 `protobuf:"bytes,2,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnapplyPolicyRequest) Reset() {
+	*x = UnapplyPolicyRequest{}
+	mi := &file_monitor_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnapplyPolicyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnapplyPolicyRequest) ProtoMessage() {}
+
+func (x *UnapplyPolicyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_monitor_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnapplyPolicyRequest.ProtoReflect.Descriptor instead.
+func (*UnapplyPolicyRequest) Descriptor() ([]byte, []int) {
+	return file_monitor_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *UnapplyPolicyRequest) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *UnapplyPolicyRequest) GetPolicyId() string {
+	if x != nil {
+		return x.PolicyId
+	}
+	return ""
+}
+
+var File_monitor_proto protoreflect.FileDescriptor
+
+const file_monitor_proto_rawDesc = "" +
 	"\n" +
-	"\x15monitor/monitor.proto\x12\amonitor\x1a\x1cgoogle/api/annotations.proto\"b\n" +
-	"\fStatsRequest\x12\x1a\n" +
-	"\bhostname\x18\x01 \x01(\tR\bhostname\x12\x10\n" +
-	"\x03cpu\x18\x02 \x01(\x01R\x03cpu\x12\x10\n" +
-	"\x03ram\x18\x03 \x01(\x01R\x03ram\x12\x12\n" +
-	"\x04disk\x18\x04 \x01(\x01R\x04disk\"G\n" +
-	"\rStatsResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage\x12\x1c\n" +
-	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp2\xbb\x01\n" +
-	"\x0eMonitorService\x12[\n" +
-	"\vStreamStats\x12\x15.monitor.StatsRequest\x1a\x16.monitor.StatsResponse\"\x1b\x82\xd3\xe4\x93\x02\x15:\x01*\"\x10/v1/stats/stream(\x01\x12L\n" +
-	"\bGetStats\x12\x15.monitor.StatsRequest\x1a\x16.monitor.StatsResponse\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/v1/statsB\x1fZ\x1dsmart-monitor/pbtypes/monitorb\x06proto3"
+	"\rmonitor.proto\x12\amonitor\x1a\x1cgoogle/api/annotations.proto\x1a.protoc-gen-openapiv2/options/annotations.proto\"\xc9\a\n" +
+	"\fStatsRequest\x12N\n" +
+	"\bhostname\x18\x01 \x01(\tB2\x92A/2 Hostname of the monitored serverJ\v\"server-01\"R\bhostname\x129\n" +
+	"\x03cpu\x18\x02 \x01(\x01B'\x92A$2\x1cCPU usage percentage (0-100)J\x0445.2R\x03cpu\x129\n" +
+	"\x03ram\x18\x03 \x01(\x01B'\x92A$2\x1cRAM usage percentage (0-100)J\x0468.5R\x03ram\x12<\n" +
+	"\x04disk\x18\x04 \x01(\x01B(\x92A%2\x1dDisk usage percentage (0-100)J\x0472.3R\x04disk\x12f\n" +
+	"\bagent_id\x18\x05 \x01(\tBK\x92AH24Unique agent identifier assigned during registrationJ\x10\"agent-a3f5c2d1\"R\aagentId\x12K\n" +
+	"\n" +
+	"ip_address\x18\x06 \x01(\tB,\x92A)2\x17IP address of the agentJ\x0e\"192.168.1.10\"R\tipAddress\x12R\n" +
+	"\ragent_version\x18\a \x01(\tB-\x92A*2\x1fVersion of the monitoring agentJ\a\"1.0.0\"R\fagentVersion\x12\xcf\x01\n" +
+	"\bmetadata\x18\b \x03(\v2#.monitor.StatsRequest.MetadataEntryB\x8d\x01\x92A\x89\x012AAdditional metadata about the agent (location, environment, etc.)JD{\"location\":\"datacenter-01\",\"environment\":\"production\",\"os\":\"linux\"}R\bmetadata\x12\x9c\x01\n" +
+	"\faccess_token\x18\t \x01(\tBy\x92Av21Authentication token obtained during registrationJA\"3f4a8b2c1d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2\"R\vaccessToken\x1a;\n" +
+	"\rMetadataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xcf\x01\n" +
+	"\rStatsResponse\x12o\n" +
+	"\amessage\x18\x01 \x01(\tBU\x92AR21Response message with stats information or statusJ\x1d\"Stats recorded successfully\"R\amessage\x12M\n" +
+	"\ttimestamp\x18\x02 \x01(\x03B/\x92A,2\x1eUnix timestamp of the responseJ\n" +
+	"1737882600R\ttimestamp\"\xb7\x04\n" +
+	"\x0fRegisterRequest\x12]\n" +
+	"\bhostname\x18\x01 \x01(\tBA\x92A>2/Hostname of the server where agent is installedJ\v\"server-01\"R\bhostname\x12K\n" +
+	"\n" +
+	"ip_address\x18\x02 \x01(\tB,\x92A)2\x17IP address of the agentJ\x0e\"192.168.1.10\"R\tipAddress\x12R\n" +
+	"\ragent_version\x18\x03 \x01(\tB-\x92A*2\x1fVersion of the monitoring agentJ\a\"1.0.0\"R\fagentVersion\x12\xe6\x01\n" +
+	"\bmetadata\x18\x04 \x03(\v2&.monitor.RegisterRequest.MetadataEntryB\xa1\x01\x92A\x9d\x012=Additional metadata (location, environment, team, tier, etc.)J\\{\"location\":\"datacenter-01\",\"environment\":\"production\",\"os\":\"linux\",\"team\":\"infrastructure\"}R\bmetadata\x1a;\n" +
+	"\rMetadataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe4\x04\n" +
+	"\x10RegisterResponse\x12H\n" +
+	"\asuccess\x18\x01 \x01(\bB.\x92A+2#Whether registration was successfulJ\x04trueR\asuccess\x12p\n" +
+	"\amessage\x18\x02 \x01(\tBV\x92AS20Human-readable message about registration statusJ\x1f\"Agent registered successfully\"R\amessage\x12i\n" +
+	"\bagent_id\x18\x03 \x01(\tBN\x92AK27Unique agent identifier (save this for future requests)J\x10\"agent-a3f5c2d1\"R\aagentId\x12\xac\x01\n" +
+	"\faccess_token\x18\x04 \x01(\tB\x88\x01\x92A\x84\x012?Authentication token for API requests (64-character hex string)JA\"3f4a8b2c1d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2\"R\vaccessToken\x12z\n" +
+	"\n" +
+	"expires_at\x18\x05 \x01(\x03B[\x92AX2JUnix timestamp when the token expires (typically 1 year from registration)J\n" +
+	"1737849600R\texpiresAt\"`\n" +
+	"\x13ControlAgentRequest\x12\x19\n" +
+	"\bagent_id\x18\x01 \x01(\tR\aagentId\x12\x16\n" +
+	"\x06action\x18\x02 \x01(\tR\x06action\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"\x9b\x01\n" +
+	"\x14ControlAgentResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12\x19\n" +
+	"\bagent_id\x18\x03 \x01(\tR\aagentId\x12\x16\n" +
+	"\x06action\x18\x04 \x01(\tR\x06action\x12\x1c\n" +
+	"\ttimestamp\x18\x05 \x01(\x03R\ttimestamp\"`\n" +
+	"\x11BlockAgentRequest\x12\x19\n" +
+	"\bagent_id\x18\x01 \x01(\tR\aagentId\x12\x18\n" +
+	"\ablocked\x18\x02 \x01(\bR\ablocked\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"}\n" +
+	"\x12BlockAgentResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12\x19\n" +
+	"\bagent_id\x18\x03 \x01(\tR\aagentId\x12\x18\n" +
+	"\ablocked\x18\x04 \x01(\bR\ablocked\"\x9c\x03\n" +
+	"\rPolicyRequest\x12\x1b\n" +
+	"\tpolicy_id\x18\x01 \x01(\tR\bpolicyId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12F\n" +
+	"\n" +
+	"thresholds\x18\x04 \x03(\v2&.monitor.PolicyRequest.ThresholdsEntryR\n" +
+	"thresholds\x12\x18\n" +
+	"\aactions\x18\x05 \x03(\tR\aactions\x12@\n" +
+	"\bmetadata\x18\x06 \x03(\v2$.monitor.PolicyRequest.MetadataEntryR\bmetadata\x12\x18\n" +
+	"\aenabled\x18\a \x01(\bR\aenabled\x1a=\n" +
+	"\x0fThresholdsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a;\n" +
+	"\rMetadataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x7f\n" +
+	"\x0ePolicyResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12\x1b\n" +
+	"\tpolicy_id\x18\x03 \x01(\tR\bpolicyId\x12\x1c\n" +
+	"\ttimestamp\x18\x04 \x01(\x03R\ttimestamp\"2\n" +
+	"\x13RemovePolicyRequest\x12\x1b\n" +
+	"\tpolicy_id\x18\x01 \x01(\tR\bpolicyId\"F\n" +
+	"\x13ListPoliciesRequest\x12\x12\n" +
+	"\x04page\x18\x01 \x01(\x05R\x04page\x12\x1b\n" +
+	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\"Y\n" +
+	"\x14ListPoliciesResponse\x12+\n" +
+	"\bpolicies\x18\x01 \x03(\v2\x0f.monitor.PolicyR\bpolicies\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"\xec\x03\n" +
+	"\x06Policy\x12\x1b\n" +
+	"\tpolicy_id\x18\x01 \x01(\tR\bpolicyId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12?\n" +
+	"\n" +
+	"thresholds\x18\x04 \x03(\v2\x1f.monitor.Policy.ThresholdsEntryR\n" +
+	"thresholds\x12\x18\n" +
+	"\aactions\x18\x05 \x03(\tR\aactions\x129\n" +
+	"\bmetadata\x18\x06 \x03(\v2\x1d.monitor.Policy.MetadataEntryR\bmetadata\x12\x18\n" +
+	"\aenabled\x18\a \x01(\bR\aenabled\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\b \x01(\x03R\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\t \x01(\x03R\tupdatedAt\x12%\n" +
+	"\x0eapplied_agents\x18\n" +
+	" \x03(\tR\rappliedAgents\x1a=\n" +
+	"\x0fThresholdsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a;\n" +
+	"\rMetadataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"L\n" +
+	"\x12ApplyPolicyRequest\x12\x19\n" +
+	"\bagent_id\x18\x01 \x01(\tR\aagentId\x12\x1b\n" +
+	"\tpolicy_id\x18\x02 \x01(\tR\bpolicyId\"N\n" +
+	"\x14UnapplyPolicyRequest\x12\x19\n" +
+	"\bagent_id\x18\x01 \x01(\tR\aagentId\x12\x1b\n" +
+	"\tpolicy_id\x18\x02 \x01(\tR\bpolicyId2\xb9\x16\n" +
+	"\x0eMonitorService\x12\xbe\x04\n" +
+	"\rRegisterAgent\x12\x18.monitor.RegisterRequest\x1a\x19.monitor.RegisterResponse\"\xf7\x03\x92A\xd6\x03\n" +
+	"\x10Agent Management\x12\x1fRegister a new monitoring agent\x1ajRegister a new agent with the backend system. Returns unique agent ID and access token for authentication.J\xfe\x01\n" +
+	"\x03200\x12\xf6\x01\n" +
+	"\x1dAgent registered successfully\"\xd4\x01\n" +
+	"\x10application/json\x12\xbf\x01{\"success\":true,\"message\":\"Agent registered successfully\",\"agent_id\":\"agent-a3f5c2d1\",\"access_token\":\"3f4a8b2c1d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2\",\"expires_at\":1737849600}J4\n" +
+	"\x03400\x12-\n" +
+	"+Bad request - missing or invalid parameters\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/v1/agent/register\x12\xf6\x01\n" +
+	"\fControlAgent\x12\x1c.monitor.ControlAgentRequest\x1a\x1d.monitor.ControlAgentResponse\"\xa8\x01\x92A~\n" +
+	"\rAgent Control\x123Control agent operations (start, shutdown, restart)\x1a8Send control commands to agent: start, shutdown, restart\x82\xd3\xe4\x93\x02!:\x01*\"\x1c/v1/agent/{agent_id}/control\x12\xc2\x01\n" +
+	"\n" +
+	"BlockAgent\x12\x1a.monitor.BlockAgentRequest\x1a\x1b.monitor.BlockAgentResponse\"{\x92AS\n" +
+	"\rAgent Control\x12\x19Block or unblock an agent\x1a'Enable or disable blocking for an agent\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/v1/agent/{agent_id}/block\x12\xb9\x01\n" +
+	"\tAddPolicy\x12\x16.monitor.PolicyRequest\x1a\x17.monitor.PolicyResponse\"{\x92Aa\n" +
+	"\x11Policy Management\x12\x1bAdd a new monitoring policy\x1a/Create a new policy with thresholds and actions\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/v1/policies\x12\xb2\x01\n" +
+	"\fUpdatePolicy\x12\x16.monitor.PolicyRequest\x1a\x17.monitor.PolicyResponse\"q\x92AK\n" +
+	"\x11Policy Management\x12\x19Update an existing policy\x1a\x1bModify policy configuration\x82\xd3\xe4\x93\x02\x1d:\x01*\x1a\x18/v1/policies/{policy_id}\x12\xa9\x01\n" +
+	"\fRemovePolicy\x12\x1c.monitor.RemovePolicyRequest\x1a\x17.monitor.PolicyResponse\"b\x92A?\n" +
+	"\x11Policy Management\x12\x0fRemove a policy\x1a\x19Delete an existing policy\x82\xd3\xe4\x93\x02\x1a*\x18/v1/policies/{policy_id}\x12\xac\x01\n" +
+	"\fListPolicies\x12\x1c.monitor.ListPoliciesRequest\x1a\x1d.monitor.ListPoliciesResponse\"_\x92AH\n" +
+	"\x11Policy Management\x12\x11List all policies\x1a Retrieve all monitoring policies\x82\xd3\xe4\x93\x02\x0e\x12\f/v1/policies\x12\xcd\x01\n" +
+	"\vApplyPolicy\x12\x1b.monitor.ApplyPolicyRequest\x1a\x17.monitor.PolicyResponse\"\x87\x01\x92AL\n" +
+	"\x11Policy Management\x12\x15Apply policy to agent\x1a Apply a policy to specific agent\x82\xd3\xe4\x93\x022:\x01*\"-/v1/agent/{agent_id}/policy/{policy_id}/apply\x12\xd8\x01\n" +
+	"\rUnapplyPolicy\x12\x1d.monitor.UnapplyPolicyRequest\x1a\x17.monitor.PolicyResponse\"\x8e\x01\x92AQ\n" +
+	"\x11Policy Management\x12\x19Unapply policy from agent\x1a!Remove policy from specific agent\x82\xd3\xe4\x93\x024:\x01*\"//v1/agent/{agent_id}/policy/{policy_id}/unapply\x12\x83\x02\n" +
+	"\vStreamStats\x12\x15.monitor.StatsRequest\x1a\x16.monitor.StatsResponse\"\xc2\x01\x92A\xa3\x01\n" +
+	"\aMetrics\x12 Stream system metrics from agent\x1ahAgent streams real-time system metrics (CPU, RAM, Disk) to backend. Requires valid authentication token.b\f\n" +
+	"\n" +
+	"\n" +
+	"\x06bearer\x12\x00\x82\xd3\xe4\x93\x02\x15:\x01*\"\x10/v1/stats/stream(\x01\x12\xaa\x03\n" +
+	"\bGetStats\x12\x15.monitor.StatsRequest\x1a\x16.monitor.StatsResponse\"\xee\x02\x92A\xce\x02\n" +
+	"\aMetrics\x12\x1dGet stats for a specific host\x1aGRetrieve the latest system metrics for a specific hostname or agent ID.J\xc1\x01\n" +
+	"\x03200\x12\xb9\x01\n" +
+	"\x1cStats retrieved successfully\"\x98\x01\n" +
+	"\x10application/json\x12\x83\x01{\"message\":\"Stats for server-01: CPU=45.20%, RAM=68.50%, Disk=72.30% (Last received: 2026-01-26T10:30:00Z)\",\"timestamp\":1737882600}J\x17\n" +
+	"\x03404\x12\x10\n" +
+	"\x0eHost not found\x82\xd3\xe4\x93\x02\x16\x12\x14/v1/stats/{hostname}B\xf9\x02\x92A\xd6\x02\x12\xbd\x01\n" +
+	"\x11Smart Monitor API\x12iAPI for Smart Monitor - Distributed System Monitoring Platform with Agent Registration and Authentication\"6\n" +
+	"\x12Smart Monitor Team\x1a support@smartmonitor.example.com2\x051.0.0*\x02\x01\x022\x10application/json:\x10application/jsonZ^\n" +
+	"\\\n" +
+	"\x06bearer\x12R\b\x02\x12=Authentication token for agent. Format: Bearer <access_token>\x1a\rAuthorization \x02b\f\n" +
+	"\n" +
+	"\n" +
+	"\x06bearer\x12\x00Z\x1dsmart-monitor/pbtypes/monitorb\x06proto3"
 
 var (
-	file_monitor_monitor_proto_rawDescOnce sync.Once
-	file_monitor_monitor_proto_rawDescData []byte
+	file_monitor_proto_rawDescOnce sync.Once
+	file_monitor_proto_rawDescData []byte
 )
 
-func file_monitor_monitor_proto_rawDescGZIP() []byte {
-	file_monitor_monitor_proto_rawDescOnce.Do(func() {
-		file_monitor_monitor_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_monitor_monitor_proto_rawDesc), len(file_monitor_monitor_proto_rawDesc)))
+func file_monitor_proto_rawDescGZIP() []byte {
+	file_monitor_proto_rawDescOnce.Do(func() {
+		file_monitor_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_monitor_proto_rawDesc), len(file_monitor_proto_rawDesc)))
 	})
-	return file_monitor_monitor_proto_rawDescData
+	return file_monitor_proto_rawDescData
 }
 
-var file_monitor_monitor_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_monitor_monitor_proto_goTypes = []any{
-	(*StatsRequest)(nil),  // 0: monitor.StatsRequest
-	(*StatsResponse)(nil), // 1: monitor.StatsResponse
+var file_monitor_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_monitor_proto_goTypes = []any{
+	(*StatsRequest)(nil),         // 0: monitor.StatsRequest
+	(*StatsResponse)(nil),        // 1: monitor.StatsResponse
+	(*RegisterRequest)(nil),      // 2: monitor.RegisterRequest
+	(*RegisterResponse)(nil),     // 3: monitor.RegisterResponse
+	(*ControlAgentRequest)(nil),  // 4: monitor.ControlAgentRequest
+	(*ControlAgentResponse)(nil), // 5: monitor.ControlAgentResponse
+	(*BlockAgentRequest)(nil),    // 6: monitor.BlockAgentRequest
+	(*BlockAgentResponse)(nil),   // 7: monitor.BlockAgentResponse
+	(*PolicyRequest)(nil),        // 8: monitor.PolicyRequest
+	(*PolicyResponse)(nil),       // 9: monitor.PolicyResponse
+	(*RemovePolicyRequest)(nil),  // 10: monitor.RemovePolicyRequest
+	(*ListPoliciesRequest)(nil),  // 11: monitor.ListPoliciesRequest
+	(*ListPoliciesResponse)(nil), // 12: monitor.ListPoliciesResponse
+	(*Policy)(nil),               // 13: monitor.Policy
+	(*ApplyPolicyRequest)(nil),   // 14: monitor.ApplyPolicyRequest
+	(*UnapplyPolicyRequest)(nil), // 15: monitor.UnapplyPolicyRequest
+	nil,                          // 16: monitor.StatsRequest.MetadataEntry
+	nil,                          // 17: monitor.RegisterRequest.MetadataEntry
+	nil,                          // 18: monitor.PolicyRequest.ThresholdsEntry
+	nil,                          // 19: monitor.PolicyRequest.MetadataEntry
+	nil,                          // 20: monitor.Policy.ThresholdsEntry
+	nil,                          // 21: monitor.Policy.MetadataEntry
 }
-var file_monitor_monitor_proto_depIdxs = []int32{
-	0, // 0: monitor.MonitorService.StreamStats:input_type -> monitor.StatsRequest
-	0, // 1: monitor.MonitorService.GetStats:input_type -> monitor.StatsRequest
-	1, // 2: monitor.MonitorService.StreamStats:output_type -> monitor.StatsResponse
-	1, // 3: monitor.MonitorService.GetStats:output_type -> monitor.StatsResponse
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+var file_monitor_proto_depIdxs = []int32{
+	16, // 0: monitor.StatsRequest.metadata:type_name -> monitor.StatsRequest.MetadataEntry
+	17, // 1: monitor.RegisterRequest.metadata:type_name -> monitor.RegisterRequest.MetadataEntry
+	18, // 2: monitor.PolicyRequest.thresholds:type_name -> monitor.PolicyRequest.ThresholdsEntry
+	19, // 3: monitor.PolicyRequest.metadata:type_name -> monitor.PolicyRequest.MetadataEntry
+	13, // 4: monitor.ListPoliciesResponse.policies:type_name -> monitor.Policy
+	20, // 5: monitor.Policy.thresholds:type_name -> monitor.Policy.ThresholdsEntry
+	21, // 6: monitor.Policy.metadata:type_name -> monitor.Policy.MetadataEntry
+	2,  // 7: monitor.MonitorService.RegisterAgent:input_type -> monitor.RegisterRequest
+	4,  // 8: monitor.MonitorService.ControlAgent:input_type -> monitor.ControlAgentRequest
+	6,  // 9: monitor.MonitorService.BlockAgent:input_type -> monitor.BlockAgentRequest
+	8,  // 10: monitor.MonitorService.AddPolicy:input_type -> monitor.PolicyRequest
+	8,  // 11: monitor.MonitorService.UpdatePolicy:input_type -> monitor.PolicyRequest
+	10, // 12: monitor.MonitorService.RemovePolicy:input_type -> monitor.RemovePolicyRequest
+	11, // 13: monitor.MonitorService.ListPolicies:input_type -> monitor.ListPoliciesRequest
+	14, // 14: monitor.MonitorService.ApplyPolicy:input_type -> monitor.ApplyPolicyRequest
+	15, // 15: monitor.MonitorService.UnapplyPolicy:input_type -> monitor.UnapplyPolicyRequest
+	0,  // 16: monitor.MonitorService.StreamStats:input_type -> monitor.StatsRequest
+	0,  // 17: monitor.MonitorService.GetStats:input_type -> monitor.StatsRequest
+	3,  // 18: monitor.MonitorService.RegisterAgent:output_type -> monitor.RegisterResponse
+	5,  // 19: monitor.MonitorService.ControlAgent:output_type -> monitor.ControlAgentResponse
+	7,  // 20: monitor.MonitorService.BlockAgent:output_type -> monitor.BlockAgentResponse
+	9,  // 21: monitor.MonitorService.AddPolicy:output_type -> monitor.PolicyResponse
+	9,  // 22: monitor.MonitorService.UpdatePolicy:output_type -> monitor.PolicyResponse
+	9,  // 23: monitor.MonitorService.RemovePolicy:output_type -> monitor.PolicyResponse
+	12, // 24: monitor.MonitorService.ListPolicies:output_type -> monitor.ListPoliciesResponse
+	9,  // 25: monitor.MonitorService.ApplyPolicy:output_type -> monitor.PolicyResponse
+	9,  // 26: monitor.MonitorService.UnapplyPolicy:output_type -> monitor.PolicyResponse
+	1,  // 27: monitor.MonitorService.StreamStats:output_type -> monitor.StatsResponse
+	1,  // 28: monitor.MonitorService.GetStats:output_type -> monitor.StatsResponse
+	18, // [18:29] is the sub-list for method output_type
+	7,  // [7:18] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
-func init() { file_monitor_monitor_proto_init() }
-func file_monitor_monitor_proto_init() {
-	if File_monitor_monitor_proto != nil {
+func init() { file_monitor_proto_init() }
+func file_monitor_proto_init() {
+	if File_monitor_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_monitor_monitor_proto_rawDesc), len(file_monitor_monitor_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_monitor_proto_rawDesc), len(file_monitor_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_monitor_monitor_proto_goTypes,
-		DependencyIndexes: file_monitor_monitor_proto_depIdxs,
-		MessageInfos:      file_monitor_monitor_proto_msgTypes,
+		GoTypes:           file_monitor_proto_goTypes,
+		DependencyIndexes: file_monitor_proto_depIdxs,
+		MessageInfos:      file_monitor_proto_msgTypes,
 	}.Build()
-	File_monitor_monitor_proto = out.File
-	file_monitor_monitor_proto_goTypes = nil
-	file_monitor_monitor_proto_depIdxs = nil
+	File_monitor_proto = out.File
+	file_monitor_proto_goTypes = nil
+	file_monitor_proto_depIdxs = nil
 }

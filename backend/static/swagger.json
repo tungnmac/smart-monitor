@@ -1,0 +1,1090 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Smart Monitor API",
+    "description": "Complete API documentation for Smart Monitor - Distributed System Monitoring Platform\n\n## Features\n- Agent Registration & Authentication\n- Real-time Metrics Streaming\n- System Monitoring (CPU, RAM, Disk)\n- Health & Readiness Checks\n\n## Quick Start\n1. Register agent: POST /v1/agent/register\n2. Stream metrics: POST /v1/stats/stream\n3. Query stats: GET /v1/stats/{hostname}\n\n## Authentication\nMost endpoints require access token obtained during registration.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Smart Monitor Team",
+      "email": "support@smartmonitor.example.com",
+      "url": "https://smartmonitor.example.com"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "host": "localhost:8080",
+  "basePath": "/",
+  "schemes": ["http", "https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "securityDefinitions": {
+    "ApiKeyAuth": {
+      "type": "apiKey",
+      "name": "access_token",
+      "in": "query",
+      "description": "Access token obtained from agent registration"
+    },
+    "BearerAuth": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "Bearer token format: 'Bearer {access_token}'"
+    }
+  },
+  "tags": [
+    {
+      "name": "Agent Management",
+      "description": "Agent registration and lifecycle management",
+      "externalDocs": {
+        "description": "Agent Setup Guide",
+        "url": "/docs/AGENT_SETUP.md"
+      }
+    },
+    {
+      "name": "Metrics",
+      "description": "System metrics streaming and retrieval"
+    },
+    {
+      "name": "Health",
+      "description": "Service health and readiness checks"
+    },
+    {
+      "name": "Auth",
+      "description": "User authentication (signup/signin)"
+    },
+    {
+      "name": "Search",
+      "description": "Search and storage via OpenSearch (stats, alerts, events)"
+    },
+    {
+      "name": "Policy Access",
+      "description": "Per-policy allowed users management"
+    },
+    {
+      "name": "Admin",
+      "description": "Administrative endpoints (user management)"
+    }
+  ],
+  "paths": {
+    "/v1/agent/register": {
+      "post": {
+        "tags": ["Agent Management"],
+        "summary": "Register a new monitoring agent",
+        "description": "Register agent with backend. Returns agent_id and access_token. If agent already registered, returns existing credentials.",
+        "operationId": "registerAgent",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "description": "Agent registration information",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RegisterRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Registration successful",
+            "schema": {
+              "$ref": "#/definitions/RegisterResponse"
+            },
+            "examples": {
+              "application/json": {
+                "success": true,
+                "message": "Agent registered successfully",
+                "agent_id": "agent-a3f5c2d1",
+                "access_token": "3f4a8b2c1d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2",
+                "expires_at": 1737849600
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            },
+            "examples": {
+              "application/json": {
+                "success": false,
+                "message": "Hostname is required",
+                "code": "INVALID_REQUEST"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/stats/stream": {
+      "post": {
+        "tags": ["Metrics"],
+        "summary": "Stream system metrics",
+        "description": "Stream real-time system metrics. Requires valid access token. Recommended interval: 2-10 seconds.",
+        "operationId": "streamStats",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "security": [
+          {"ApiKeyAuth": []}
+        ],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "description": "System metrics data",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/StatsRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Metrics recorded successfully",
+            "schema": {
+              "$ref": "#/definitions/StatsResponse"
+            },
+            "examples": {
+              "application/json": {
+                "message": "Stats recorded successfully",
+                "timestamp": 1737882600
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid metrics data",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            },
+            "examples": {
+              "application/json": {
+                "message": "Invalid stats data: CPU value must be between 0 and 100",
+                "code": "VALIDATION_ERROR"
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication failed",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            },
+            "examples": {
+              "application/json": {
+                "message": "Authentication failed: invalid or expired token",
+                "code": "UNAUTHORIZED"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/stats/{hostname}": {
+      "get": {
+        "tags": ["Metrics"],
+        "summary": "Get stats for specific host",
+        "description": "Retrieve latest metrics for a hostname",
+        "operationId": "getStats",
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "name": "hostname",
+            "in": "path",
+            "description": "Hostname to query",
+            "required": true,
+            "type": "string",
+            "default": "server-01"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stats retrieved successfully",
+            "schema": {
+              "$ref": "#/definitions/StatsDetailResponse"
+            },
+            "examples": {
+              "application/json": {
+                "hostname": "server-01",
+                "agent_id": "agent-a3f5c2d1",
+                "ip_address": "192.168.1.10",
+                "cpu": 45.2,
+                "ram": 68.5,
+                "disk": 72.3,
+                "timestamp": 1737882600,
+                "last_received": "2026-01-26T10:30:00Z",
+                "status": "online"
+              }
+            }
+          },
+          "404": {
+            "description": "Host not found",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/stats": {
+      "get": {
+        "tags": ["Metrics"],
+        "summary": "Get all stats",
+        "description": "Retrieve metrics for all monitored hosts",
+        "operationId": "getAllStats",
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "Stats list retrieved",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "stats": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/StatsDetailResponse"
+                  }
+                },
+                "total": {
+                  "type": "integer",
+                  "example": 3
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents": {
+      "get": {
+        "tags": ["Agent Management"],
+        "summary": "List all registered agents",
+        "description": "Get list of all registered agents with their status (future feature)",
+        "operationId": "listAgents",
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "Agents list retrieved",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "agents": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/AgentInfo"
+                  }
+                },
+                "total": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/{agent_id}": {
+      "get": {
+        "tags": ["Agent Management"],
+        "summary": "Get agent details",
+        "description": "Get detailed information about specific agent (future feature)",
+        "operationId": "getAgent",
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent details",
+            "schema": {
+              "$ref": "#/definitions/AgentInfo"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Agent Management"],
+        "summary": "Revoke agent access",
+        "description": "Revoke agent's access token (future feature)",
+        "operationId": "revokeAgent",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent revoked"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Health check",
+        "description": "Check if service is healthy",
+        "operationId": "healthCheck",
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "schema": {
+              "$ref": "#/definitions/HealthResponse"
+            },
+            "examples": {
+              "application/json": {
+                "status": "healthy",
+                "timestamp": 1737882600,
+                "service": "smart-monitor-backend",
+                "version": "1.0.0"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Readiness check",
+        "description": "Check if service is ready to accept traffic",
+        "operationId": "readyCheck",
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "Service is ready",
+            "schema": {
+              "$ref": "#/definitions/ReadyResponse"
+            }
+          }
+        }
+      }
+    },
+    "/live": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Liveness check",
+        "description": "Check if service is alive",
+        "operationId": "liveCheck",
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "Service is alive"
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Prometheus metrics",
+        "description": "Prometheus-compatible metrics endpoint",
+        "operationId": "prometheusMetrics",
+        "produces": ["text/plain"],
+        "responses": {
+          "200": {
+            "description": "Metrics in Prometheus format"
+          }
+        }
+      }
+    },
+    "/auth/signup": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "User signup",
+        "description": "Create a new user and return the created profile",
+        "operationId": "authSignup",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {"$ref": "#/definitions/AuthSignUpRequest"}
+          }
+        ],
+        "responses": {
+          "200": {"description": "Signup successful", "schema": {"$ref": "#/definitions/AuthSignUpResponse"}},
+          "400": {"description": "Invalid request", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/auth/signin": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "User signin",
+        "description": "Authenticate user and return JWT token",
+        "operationId": "authSignin",
+        "parameters": [
+          {"name": "body", "in": "body", "required": true, "schema": {"$ref": "#/definitions/AuthSignInRequest"}}
+        ],
+        "responses": {
+          "200": {"description": "Signin successful", "schema": {"$ref": "#/definitions/AuthSignInResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/search/stats": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Search stats",
+        "description": "Search stats documents (OpenSearch)",
+        "operationId": "searchStats",
+        "parameters": [
+          {"name": "q", "in": "query", "type": "string", "description": "Free text query"},
+          {"name": "hostname", "in": "query", "type": "string"},
+          {"name": "limit", "in": "query", "type": "integer", "format": "int32", "default": 100}
+        ],
+        "responses": {
+          "200": {"description": "Stats search result", "schema": {"$ref": "#/definitions/SearchStatsResponse"}},
+          "500": {"description": "Server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        },
+        "security": [{"BearerAuth": []}]
+      }
+    },
+    "/search/alerts": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Search alerts",
+        "description": "Search alerts with filters",
+        "operationId": "searchAlerts",
+        "parameters": [
+          {"name": "hostname", "in": "query", "type": "string"},
+          {"name": "severity", "in": "query", "type": "string", "enum": ["info", "warning", "critical"]},
+          {"name": "status", "in": "query", "type": "string", "enum": ["open", "resolved"]},
+          {"name": "limit", "in": "query", "type": "integer", "format": "int32", "default": 100}
+        ],
+        "responses": {
+          "200": {"description": "Alerts list", "schema": {"$ref": "#/definitions/SearchAlertsResponse"}},
+          "500": {"description": "Server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        },
+        "security": [{"BearerAuth": []}]
+      }
+    },
+    "/search/events": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Search events",
+        "description": "Search events with filters",
+        "operationId": "searchEvents",
+        "parameters": [
+          {"name": "q", "in": "query", "type": "string"},
+          {"name": "hostname", "in": "query", "type": "string"},
+          {"name": "type", "in": "query", "type": "string"},
+          {"name": "level", "in": "query", "type": "string"},
+          {"name": "limit", "in": "query", "type": "integer", "format": "int32", "default": 100},
+          {"name": "offset", "in": "query", "type": "integer", "format": "int32", "default": 0}
+        ],
+        "responses": {
+          "200": {"description": "Events list", "schema": {"$ref": "#/definitions/SearchEventsResponse"}},
+          "500": {"description": "Server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        },
+        "security": [{"BearerAuth": []}]
+      }
+    },
+    "/search/alerts/stats": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Alert statistics",
+        "operationId": "alertStats",
+        "responses": {
+          "200": {"description": "Alert stats", "schema": {"type": "object"}},
+          "500": {"description": "Server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        },
+        "security": [{"BearerAuth": []}]
+      }
+    },
+    "/search/events/stats": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Event statistics",
+        "operationId": "eventStats",
+        "responses": {
+          "200": {"description": "Event stats", "schema": {"type": "object"}},
+          "500": {"description": "Server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        },
+        "security": [{"BearerAuth": []}]
+      }
+    },
+    "/search/alerts/create": {
+      "post": {
+        "tags": ["Search"],
+        "summary": "Create alert",
+        "operationId": "createAlert",
+        "parameters": [
+          {"name": "body", "in": "body", "required": true, "schema": {"$ref": "#/definitions/AlertPayload"}}
+        ],
+        "responses": {
+          "201": {"description": "Created", "schema": {"type": "object", "properties": {"id": {"type": "string"}}}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        },
+        "security": [{"BearerAuth": []}]
+      }
+    },
+    "/search/alerts/resolve": {
+      "post": {
+        "tags": ["Search"],
+        "summary": "Resolve alert",
+        "operationId": "resolveAlert",
+        "parameters": [
+          {"name": "id", "in": "query", "required": true, "type": "string", "description": "Alert ID"}
+        ],
+        "responses": {
+          "200": {"description": "Resolved"},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        },
+        "security": [{"BearerAuth": []}]
+      }
+    },
+    "/search/events/log": {
+      "post": {
+        "tags": ["Search"],
+        "summary": "Log event",
+        "operationId": "logEvent",
+        "parameters": [
+          {"name": "body", "in": "body", "required": true, "schema": {"$ref": "#/definitions/EventPayload"}}
+        ],
+        "responses": {
+          "201": {"description": "Logged"},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        },
+        "security": [{"BearerAuth": []}]
+      }
+    },
+    "/v1/policies/{policy_id}/allowed-users": {
+      "get": {
+        "tags": ["Policy Access"],
+        "summary": "List allowed users for a policy",
+        "operationId": "listPolicyAllowedUsers",
+        "parameters": [
+          {"name": "policy_id", "in": "path", "required": true, "type": "string"}
+        ],
+        "responses": {
+          "200": {"description": "Allowed users", "schema": {"$ref": "#/definitions/PolicyAllowedUsersResponse"}},
+          "404": {"description": "Policy not found", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        },
+        "security": [{"BearerAuth": []}]
+      }
+    },
+    "/v1/policies/{policy_id}/allowed-users/add": {
+      "post": {
+        "tags": ["Policy Access"],
+        "summary": "Allow user on policy",
+        "operationId": "addPolicyAllowedUser",
+        "parameters": [
+          {"name": "policy_id", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "required": true, "schema": {"$ref": "#/definitions/PolicyAllowedUserRequest"}}
+        ],
+        "responses": {
+          "200": {"description": "Added", "schema": {"$ref": "#/definitions/PolicyAllowedUsersResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        },
+        "security": [{"BearerAuth": []}]
+      }
+    },
+    "/v1/policies/{policy_id}/allowed-users/remove": {
+      "post": {
+        "tags": ["Policy Access"],
+        "summary": "Remove allowed user",
+        "operationId": "removePolicyAllowedUser",
+        "parameters": [
+          {"name": "policy_id", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "required": true, "schema": {"$ref": "#/definitions/PolicyAllowedUserRequest"}}
+        ],
+        "responses": {
+          "200": {"description": "Removed", "schema": {"$ref": "#/definitions/PolicyAllowedUsersResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        },
+        "security": [{"BearerAuth": []}]
+      }
+    },
+    "/tools/users": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Admin create user",
+        "description": "Create user with custom role (currently no auth middleware)",
+        "operationId": "adminCreateUser",
+        "parameters": [
+          {"name": "body", "in": "body", "required": true, "schema": {"$ref": "#/definitions/AdminCreateUserRequest"}}
+        ],
+        "responses": {
+          "200": {"description": "User created", "schema": {"$ref": "#/definitions/AuthSignUpResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    }
+  },
+  "definitions": {
+    "RegisterRequest": {
+      "type": "object",
+      "required": ["hostname"],
+      "properties": {
+        "hostname": {
+          "type": "string",
+          "description": "Hostname of the monitored server",
+          "example": "server-01"
+        },
+        "ip_address": {
+          "type": "string",
+          "description": "IP address of the agent",
+          "example": "192.168.1.10"
+        },
+        "agent_version": {
+          "type": "string",
+          "description": "Version of monitoring agent",
+          "example": "1.0.0"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Custom metadata tags",
+          "example": {
+            "location": "datacenter-01",
+            "environment": "production",
+            "os": "linux",
+            "team": "infrastructure",
+            "tier": "web"
+          }
+        }
+      }
+    },
+    "RegisterResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true
+        },
+        "message": {
+          "type": "string",
+          "example": "Agent registered successfully"
+        },
+        "agent_id": {
+          "type": "string",
+          "description": "Unique agent identifier",
+          "example": "agent-a3f5c2d1"
+        },
+        "access_token": {
+          "type": "string",
+          "description": "64-character authentication token",
+          "example": "3f4a8b2c1d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2"
+        },
+        "expires_at": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Token expiration timestamp",
+          "example": 1737849600
+        }
+      }
+    },
+    "AuthSignUpRequest": {
+      "type": "object",
+      "required": ["email", "password"],
+      "properties": {
+        "email": {"type": "string", "format": "email", "example": "user@example.com"},
+        "username": {"type": "string", "example": "alice"},
+        "password": {"type": "string", "format": "password", "example": "changeme"},
+        "role": {"type": "string", "enum": ["admin", "operator", "viewer"], "example": "viewer"}
+      }
+    },
+    "AuthSignUpResponse": {
+      "type": "object",
+      "properties": {
+        "user": {"$ref": "#/definitions/UserProfile"}
+      }
+    },
+    "AuthSignInRequest": {
+      "type": "object",
+      "required": ["email", "password"],
+      "properties": {
+        "email": {"type": "string", "format": "email", "example": "user@example.com"},
+        "password": {"type": "string", "format": "password", "example": "changeme"}
+      }
+    },
+    "AuthSignInResponse": {
+      "type": "object",
+      "properties": {
+        "token": {"type": "string", "description": "JWT bearer token"},
+        "user": {"$ref": "#/definitions/UserProfile"}
+      }
+    },
+    "UserProfile": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "email": {"type": "string"},
+        "username": {"type": "string"},
+        "role": {"type": "string", "enum": ["admin", "operator", "viewer"]}
+      }
+    },
+    "SearchStatsResponse": {
+      "type": "object",
+      "properties": {
+        "total": {"type": "integer", "format": "int32"},
+        "limit": {"type": "integer", "format": "int32"},
+        "query": {"type": "string"},
+        "result": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "hostname": {"type": "string"},
+              "cpu": {"type": "number", "format": "double"},
+              "ram": {"type": "number", "format": "double"},
+              "disk": {"type": "number", "format": "double"},
+              "timestamp": {"type": "integer", "format": "int64"}
+            }
+          }
+        }
+      }
+    },
+    "SearchAlertsResponse": {
+      "type": "object",
+      "properties": {
+        "total": {"type": "integer", "format": "int32"},
+        "limit": {"type": "integer", "format": "int32"},
+        "hostname": {"type": "string"},
+        "severity": {"type": "string"},
+        "status": {"type": "string"},
+        "result": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/AlertPayload"}
+        }
+      }
+    },
+    "SearchEventsResponse": {
+      "type": "object",
+      "properties": {
+        "total": {"type": "integer", "format": "int32"},
+        "limit": {"type": "integer", "format": "int32"},
+        "offset": {"type": "integer", "format": "int32"},
+        "hostname": {"type": "string"},
+        "type": {"type": "string"},
+        "level": {"type": "string"},
+        "result": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/EventPayload"}
+        }
+      }
+    },
+    "AlertPayload": {
+      "type": "object",
+      "required": ["hostname", "alert_type", "severity", "title", "description"],
+      "properties": {
+        "id": {"type": "string"},
+        "hostname": {"type": "string"},
+        "alert_type": {"type": "string"},
+        "severity": {"type": "string", "enum": ["critical", "high", "medium", "low"]},
+        "title": {"type": "string"},
+        "description": {"type": "string"},
+        "timestamp": {"type": "integer", "format": "int64"},
+        "status": {"type": "string", "enum": ["active", "resolved"]},
+        "value": {"type": "number", "format": "double"},
+        "threshold": {"type": "number", "format": "double"},
+        "metadata": {"type": "object", "additionalProperties": {"type": "string"}}
+      }
+    },
+    "EventPayload": {
+      "type": "object",
+      "required": ["hostname", "event_type", "event_name", "message", "source", "level"],
+      "properties": {
+        "id": {"type": "string"},
+        "hostname": {"type": "string"},
+        "event_type": {"type": "string"},
+        "event_name": {"type": "string"},
+        "timestamp": {"type": "integer", "format": "int64"},
+        "message": {"type": "string"},
+        "source": {"type": "string"},
+        "user": {"type": "string"},
+        "process_id": {"type": "integer", "format": "int32"},
+        "process_name": {"type": "string"},
+        "level": {"type": "string", "enum": ["info", "warning", "error", "critical"]},
+        "details": {"type": "object", "additionalProperties": {}}
+      }
+    },
+    "PolicyAllowedUserRequest": {
+      "type": "object",
+      "required": ["user_id"],
+      "properties": {
+        "user_id": {"type": "string", "example": "user-1234"}
+      }
+    },
+    "PolicyAllowedUsersResponse": {
+      "type": "object",
+      "properties": {
+        "success": {"type": "boolean"},
+        "policy_id": {"type": "string"},
+        "allowed_user_ids": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "AdminCreateUserRequest": {
+      "type": "object",
+      "required": ["email", "password", "role"],
+      "properties": {
+        "email": {"type": "string", "format": "email"},
+        "username": {"type": "string"},
+        "password": {"type": "string", "format": "password"},
+        "role": {"type": "string", "enum": ["admin", "operator", "viewer"]}
+      }
+    },
+    "StatsRequest": {
+      "type": "object",
+      "required": ["hostname", "agent_id", "access_token", "cpu", "ram", "disk"],
+      "properties": {
+        "hostname": {
+          "type": "string",
+          "example": "server-01"
+        },
+        "agent_id": {
+          "type": "string",
+          "example": "agent-a3f5c2d1"
+        },
+        "access_token": {
+          "type": "string",
+          "example": "3f4a8b2c1d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2"
+        },
+        "ip_address": {
+          "type": "string",
+          "example": "192.168.1.10"
+        },
+        "agent_version": {
+          "type": "string",
+          "example": "1.0.0"
+        },
+        "cpu": {
+          "type": "number",
+          "format": "double",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "CPU usage percentage",
+          "example": 45.2
+        },
+        "ram": {
+          "type": "number",
+          "format": "double",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "RAM usage percentage",
+          "example": 68.5
+        },
+        "disk": {
+          "type": "number",
+          "format": "double",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Disk usage percentage",
+          "example": 72.3
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "StatsResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "example": "Stats recorded successfully"
+        },
+        "timestamp": {
+          "type": "integer",
+          "format": "int64",
+          "example": 1737882600
+        }
+      }
+    },
+    "StatsDetailResponse": {
+      "type": "object",
+      "properties": {
+        "hostname": {
+          "type": "string",
+          "example": "server-01"
+        },
+        "agent_id": {
+          "type": "string",
+          "example": "agent-a3f5c2d1"
+        },
+        "ip_address": {
+          "type": "string",
+          "example": "192.168.1.10"
+        },
+        "cpu": {
+          "type": "number",
+          "format": "double",
+          "example": 45.2
+        },
+        "ram": {
+          "type": "number",
+          "format": "double",
+          "example": 68.5
+        },
+        "disk": {
+          "type": "number",
+          "format": "double",
+          "example": 72.3
+        },
+        "timestamp": {
+          "type": "integer",
+          "format": "int64",
+          "example": 1737882600
+        },
+        "last_received": {
+          "type": "string",
+          "format": "date-time",
+          "example": "2026-01-26T10:30:00Z"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["online", "offline", "unknown"],
+          "example": "online"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "AgentInfo": {
+      "type": "object",
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "example": "agent-a3f5c2d1"
+        },
+        "hostname": {
+          "type": "string",
+          "example": "server-01"
+        },
+        "ip_address": {
+          "type": "string",
+          "example": "192.168.1.10"
+        },
+        "agent_version": {
+          "type": "string",
+          "example": "1.0.0"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "suspended", "revoked"],
+          "example": "active"
+        },
+        "registered_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_seen": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "HealthResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "healthy"
+        },
+        "timestamp": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "service": {
+          "type": "string",
+          "example": "smart-monitor-backend"
+        },
+        "version": {
+          "type": "string",
+          "example": "1.0.0"
+        }
+      }
+    },
+    "ReadyResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "ready"
+        },
+        "timestamp": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "active_hosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "example": ["server-01", "server-02", "server-03"]
+        }
+      }
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": false
+        },
+        "message": {
+          "type": "string",
+          "description": "Error description",
+          "example": "Invalid request parameters"
+        },
+        "code": {
+          "type": "string",
+          "description": "Error code",
+          "enum": [
+            "INVALID_REQUEST",
+            "UNAUTHORIZED",
+            "NOT_FOUND",
+            "VALIDATION_ERROR",
+            "INTERNAL_ERROR"
+          ],
+          "example": "INVALID_REQUEST"
+        },
+        "details": {
+          "type": "object",
+          "description": "Additional error details"
+        }
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "Complete documentation and setup guide",
+    "url": "/docs/AGENT_SETUP.md"
+  }
+}
