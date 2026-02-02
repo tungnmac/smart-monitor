@@ -22,6 +22,7 @@ import (
 	"smart-monitor/backend/internal/infrastructure/persistence"
 	"smart-monitor/backend/pkg/config"
 	pb "smart-monitor/pbtypes/monitor"
+	processpb "smart-monitor/pbtypes/process"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
@@ -105,10 +106,11 @@ func main() {
 
 	// Initialize gRPC handlers
 	monitorGRPCHandler := grpchandler.NewMonitorServiceServer(monitorUseCase, authService, controlService, policyService)
+	processGRPCHandler := grpchandler.NewProcessServiceServer(controlService)
 	log.Println("✓ gRPC handlers initialized")
 
 	// Start gRPC server
-	grpcServer, lis := startGRPCServer(cfg, monitorGRPCHandler)
+	grpcServer, lis := startGRPCServer(cfg, monitorGRPCHandler, processGRPCHandler)
 	log.Printf("✓ gRPC Server starting on port :%s", cfg.Server.GRPCPort)
 
 	// Start HTTP server
@@ -130,7 +132,7 @@ func main() {
 }
 
 // startGRPCServer starts the gRPC server
-func startGRPCServer(cfg *config.Config, monitorHandler *grpchandler.MonitorServiceServer) (*grpc.Server, net.Listener) {
+func startGRPCServer(cfg *config.Config, monitorHandler *grpchandler.MonitorServiceServer, processHandler *grpchandler.ProcessServiceServer) (*grpc.Server, net.Listener) {
 	lis, err := net.Listen("tcp", ":"+cfg.Server.GRPCPort)
 	if err != nil {
 		log.Fatalf("Failed to listen on port %s: %v", cfg.Server.GRPCPort, err)
@@ -141,6 +143,7 @@ func startGRPCServer(cfg *config.Config, monitorHandler *grpchandler.MonitorServ
 
 	// Register services
 	pb.RegisterMonitorServiceServer(grpcServer, monitorHandler)
+	processpb.RegisterProcessServiceServer(grpcServer, processHandler)
 
 	// Register health check service
 	healthServer := health.NewServer()
@@ -171,7 +174,12 @@ func startHTTPServer(cfg *config.Config, monitorUseCase *usecase.MonitorUseCase,
 
 	err := pb.RegisterMonitorServiceHandlerFromEndpoint(ctx, gwMux, endpoint, opts)
 	if err != nil {
-		log.Fatalf("Failed to register gateway: %v", err)
+		log.Fatalf("Failed to register monitor gateway: %v", err)
+	}
+
+	err = processpb.RegisterProcessServiceHandlerFromEndpoint(ctx, gwMux, endpoint, opts)
+	if err != nil {
+		log.Fatalf("Failed to register process gateway: %v", err)
 	}
 
 	// Mount API gateway

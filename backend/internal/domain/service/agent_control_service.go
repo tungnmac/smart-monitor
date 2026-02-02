@@ -92,3 +92,59 @@ func (s *AgentControlService) UnblockAgent(agentID string) error {
 func (s *AgentControlService) GetAgentStatus(agentID string) (*entity.AgentRegistry, error) {
 	return s.agentRepo.GetByAgentID(context.Background(), agentID)
 }
+
+// GetProcessList retrieves list of running processes from an agent
+func (s *AgentControlService) GetProcessList(agentID string) ([]*entity.Process, error) {
+	agent, err := s.agentRepo.GetByAgentID(context.Background(), agentID)
+	if err != nil {
+		return nil, errors.New("agent not found")
+	}
+
+	if agent.Status != entity.AgentStatusActive {
+		return nil, fmt.Errorf("agent is not active (status: %s)", agent.Status)
+	}
+
+	if agent.IsBlocked() {
+		return nil, errors.New("agent is blocked")
+	}
+
+	// Log the request
+	log.Printf("Requesting process list from agent %s (host: %s)", agentID, agent.Hostname)
+
+	// In a real implementation, this would send a request to the agent
+	// and receive the actual process list. For now, return mock data.
+	// TODO: Implement actual agent communication
+	mockProcesses := []*entity.Process{
+		entity.NewProcess(1, "systemd", 0.1, 1.2, agentID, agent.Hostname),
+		entity.NewProcess(100, "sshd", 0.05, 0.8, agentID, agent.Hostname),
+		entity.NewProcess(200, "nginx", 2.5, 3.4, agentID, agent.Hostname),
+		entity.NewProcess(300, "postgres", 5.2, 12.6, agentID, agent.Hostname),
+	}
+
+	log.Printf("Retrieved %d processes from agent %s", len(mockProcesses), agentID)
+	return mockProcesses, nil
+}
+
+// KillProcess sends a kill signal to a process on an agent
+func (s *AgentControlService) KillProcess(agentID string, pid int32) error {
+	agent, err := s.agentRepo.GetByAgentID(context.Background(), agentID)
+	if err != nil {
+		return errors.New("agent not found")
+	}
+
+	if agent.Status != entity.AgentStatusActive {
+		return fmt.Errorf("agent is not active (status: %s)", agent.Status)
+	}
+
+	if agent.IsBlocked() {
+		return errors.New("agent is blocked")
+	}
+
+	// Log the kill request
+	log.Printf("Requesting to kill process %d on agent %s (host: %s)", pid, agentID, agent.Hostname)
+
+	// In a real implementation, this would send a kill command to the agent
+	// TODO: Implement actual agent communication
+	log.Printf("Process %d killed successfully on agent %s", pid, agentID)
+	return nil
+}
