@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
+  console.log("Home page session:", session);
   if (session) {
     redirect("/dashboard");
   }

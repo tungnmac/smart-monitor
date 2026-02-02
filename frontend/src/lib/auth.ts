@@ -1,33 +1,51 @@
 import type { NextAuthOptions } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
-const username = process.env.AUTH_USERNAME || "admin";
-const password = process.env.AUTH_PASSWORD || "changeme";
-
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
 
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",
+    error: "/login", // Redirect errors to login page
   },
   providers: [
     Credentials({
+      id: "credentials",
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "text" },
+        email: { label: "Email", type: "email", placeholder: "email@example.com" },
         password: { label: "Password", type: "password" },
       },
-      authorize: async (creds) => {
-        if (!creds?.email || !creds?.password) return null;
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          console.log("Missing credentials");
+          return null;
+        }
+        
         try {
           const res = await fetch(`${BACKEND_URL}/auth/signin`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: creds.email, password: creds.password }),
+            body: JSON.stringify({ 
+              email: credentials.email, 
+              password: credentials.password 
+            }),
           });
-          if (!res.ok) return null;
+          
+          if (!res.ok) {
+            console.log("Backend signin failed:", res.status);
+            return null;
+          }
+          
           const data = await res.json();
+          
+          if (!data.user || !data.token) {
+            console.log("Invalid response format");
+            return null;
+          }
+          
           const user = data.user as { id: string; email: string; username?: string; role?: string };
           return {
             id: user.id,
@@ -37,6 +55,7 @@ export const authOptions: NextAuthOptions = {
             accessToken: data.token,
           } as any;
         } catch (e) {
+          console.error("Authorization error:", e);
           return null;
         }
       },

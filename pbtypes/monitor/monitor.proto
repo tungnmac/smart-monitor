@@ -39,6 +39,18 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
 };
 
 service MonitorService {
+  // List all registered agents
+  rpc ListAgents (ListAgentsRequest) returns (ListAgentsResponse) {
+    option (google.api.http) = {
+      get: "/v1/agents"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "List all registered agents";
+      description: "Retrieve a list of all registered agents with their status and metrics";
+      tags: "Agent Management";
+    };
+  }
+
   // Register Agent - Agent must register first before streaming
   rpc RegisterAgent (RegisterRequest) returns (RegisterResponse) {
     option (google.api.http) = {
@@ -377,6 +389,33 @@ message Policy {
   int64 created_at = 8;
   int64 updated_at = 9;
   repeated string applied_agents = 10; // List of agent IDs this policy is applied to
+}
+
+// List Agents Messages
+message ListAgentsRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+  string status = 3; // Filter by status: "online", "offline", "degraded"
+}
+
+message ListAgentsResponse {
+  repeated AgentInfo agents = 1;
+  int32 total = 2;
+}
+
+message AgentInfo {
+  string id = 1;
+  string host = 2;
+  string env = 3;
+  string region = 4;
+  string status = 5; // "online", "offline", "degraded"
+  string version = 6;
+  double cpu = 7;
+  double ram = 8;
+  double disk = 9;
+  string ip_address = 10;
+  int64 last_seen = 11;
+  int64 registered_at = 12;
 }
 
 message ApplyPolicyRequest {

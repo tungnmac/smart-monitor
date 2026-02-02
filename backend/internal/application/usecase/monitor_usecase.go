@@ -10,14 +10,25 @@ import (
 
 // MonitorUseCase handles monitoring use cases
 type MonitorUseCase struct {
-	statsService *service.StatsService
+	statsService  *service.StatsService
+	agentRegistry interface {
+		GetAll(ctx context.Context) ([]*entity.AgentRegistry, error)
+	}
 }
 
 // NewMonitorUseCase creates a new MonitorUseCase
 func NewMonitorUseCase(statsService *service.StatsService) *MonitorUseCase {
 	return &MonitorUseCase{
-		statsService: statsService,
+		statsService:  statsService,
+		agentRegistry: nil, // Will be set separately
 	}
+}
+
+// SetAgentRegistry sets the agent registry repository
+func (uc *MonitorUseCase) SetAgentRegistry(repo interface {
+	GetAll(ctx context.Context) ([]*entity.AgentRegistry, error)
+}) {
+	uc.agentRegistry = repo
 }
 
 // RecordStats records incoming stats from agent
@@ -82,4 +93,12 @@ func (uc *MonitorUseCase) GetAllStats(ctx context.Context) ([]*dto.StatsResponse
 // GetActiveHosts returns list of active hosts
 func (uc *MonitorUseCase) GetActiveHosts(ctx context.Context) ([]string, error) {
 	return uc.statsService.GetActiveHosts(ctx)
+}
+
+// ListAllAgents returns all registered agents
+func (uc *MonitorUseCase) ListAllAgents(ctx context.Context) ([]*entity.AgentRegistry, error) {
+	if uc.agentRegistry == nil {
+		return []*entity.AgentRegistry{}, nil
+	}
+	return uc.agentRegistry.GetAll(ctx)
 }

@@ -244,6 +244,53 @@
         ]
       }
     },
+    "/v1/agents": {
+      "get": {
+        "summary": "List all registered agents",
+        "description": "Retrieve a list of all registered agents with their status and metrics",
+        "operationId": "MonitorService_ListAgents",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/monitorListAgentsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "status",
+            "description": "Filter by status: \"online\", \"offline\", \"degraded\"",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Agent Management"
+        ]
+      }
+    },
     "/v1/policies": {
       "get": {
         "summary": "List all policies",
@@ -598,6 +645,53 @@
       },
       "title": "Policy Messages"
     },
+    "monitorAgentInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "env": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "title": "\"online\", \"offline\", \"degraded\""
+        },
+        "version": {
+          "type": "string"
+        },
+        "cpu": {
+          "type": "number",
+          "format": "double"
+        },
+        "ram": {
+          "type": "number",
+          "format": "double"
+        },
+        "disk": {
+          "type": "number",
+          "format": "double"
+        },
+        "ipAddress": {
+          "type": "string"
+        },
+        "lastSeen": {
+          "type": "string",
+          "format": "int64"
+        },
+        "registeredAt": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
     "monitorBlockAgentResponse": {
       "type": "object",
       "properties": {
@@ -633,6 +727,22 @@
         "timestamp": {
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "monitorListAgentsResponse": {
+      "type": "object",
+      "properties": {
+        "agents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/monitorAgentInfo"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32"
         }
       }
     },

@@ -4,6 +4,7 @@ package http
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"smart-monitor/backend/internal/domain/service"
 )
@@ -31,6 +32,11 @@ func (h *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
+
+	if body.Username == "" {
+		body.Username = strings.Split(body.Email, "@")[0]
+	}
+
 	user, err := h.users.SignUp(r.Context(), body.Email, body.Username, body.Password, body.Role)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)

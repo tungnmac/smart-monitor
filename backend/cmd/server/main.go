@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -94,6 +95,7 @@ func main() {
 
 	// Initialize use cases
 	monitorUseCase := usecase.NewMonitorUseCase(statsService)
+	monitorUseCase.SetAgentRegistry(agentRepo)
 	log.Println("✓ Use cases initialized")
 
 	// Initialize user auth service
@@ -272,7 +274,7 @@ func startHTTPServer(cfg *config.Config, monitorUseCase *usecase.MonitorUseCase,
 
 	httpServer := &http.Server{
 		Addr:         ":" + cfg.Server.HTTPPort,
-		Handler:      httpMux,
+		Handler:      corsMiddleware(httpMux),
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  120 * time.Second,
@@ -286,6 +288,49 @@ func startHTTPServer(cfg *config.Config, monitorUseCase *usecase.MonitorUseCase,
 	}()
 
 	return httpServer
+}
+
+func corsMiddleware(next http.Handler) http.Handler {
+	allowedOrigins := parseAllowedOrigins(os.Getenv("CORS_ALLOW_ORIGINS"))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if len(allowedOrigins) == 0 {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		} else if origin != "" && isAllowedOrigin(origin, allowedOrigins) {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+		}
+
+		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Control-Allow-Origin")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func parseAllowedOrigins(value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	parts := strings.Split(value, ",")
+	for i, p := range parts {
+		parts[i] = strings.TrimSpace(p)
+	}
+	return parts
+}
+
+func isAllowedOrigin(origin string, allowed []string) bool {
+	for _, a := range allowed {
+		if a == "*" || a == origin {
+			return true
+		}
+	}
+	return false
 }
 
 // gracefulShutdown handles graceful shutdown

@@ -45,18 +45,23 @@ build: build-backend build-agent ## Build tất cả services
 
 build-backend: ## Build backend service
 	@echo "$(BLUE)🔨 Building backend...$(NC)"
-	@cd backend && go build -o backend cmd/server/main.go
-	@echo "$(GREEN)✅ Backend built: backend/backend$(NC)"
+	@cd backend && go build -o backend/bin cmd/server/main.go 
+	@echo "$(GREEN)✅ Backend built: backend/bin$(NC)"
 
 build-agent: ## Build agent
 	@echo "$(BLUE)🔨 Building agent...$(NC)"
-	@cd agent && go build -o agent main.go
-	@echo "$(GREEN)✅ Agent built: agent/agent$(NC)"
+	@cd agent && go build -o agent/bin main.go
+	@echo "$(GREEN)✅ Agent built: agent/bin$(NC)"
 
 build-monitor-test: ## Build monitor test tool
 	@echo "$(BLUE)🔨 Building monitor-test...$(NC)"
-	@cd monitor-test && go build -o monitor-test main.go
-	@echo "$(GREEN)✅ Monitor-test built: monitor-test/monitor-test$(NC)"
+	@cd monitor-test && go build -o monitor-test/bin main.go
+	@echo "$(GREEN)✅ Monitor-test built: monitor-test/bin$(NC)"
+
+build-frontend: ## Build frontend
+	@echo "$(BLUE)🔨 Building frontend...$(NC)"
+	@cd frontend && npm install && npm run build
+	@echo "$(GREEN)✅ Frontend built successfully$(NC)"
 
 ##@ Run
 
@@ -74,37 +79,63 @@ run-monitor-test: ## Chạy monitor test tool
 	@echo "$(BLUE)🧪 Running monitor-test...$(NC)"
 	@cd monitor-test && go run main.go
 
+run-frontend: ## Chạy frontend (dev mode)
+	@echo "$(BLUE)🚀 Starting frontend in dev mode...$(NC)"
+	@echo "$(YELLOW)Press Ctrl+C to stop$(NC)"
+	@cd frontend && npm install && npm run dev
+
 run-all: ## Chạy tất cả services (background mode)
 	@echo "$(BLUE)🚀 Starting all services...$(NC)"
 	@make run-backend-bg
 	@sleep 3
 	@make run-agent-bg
+	@sleep 1
+	@make run-frontend-bg
 	@echo "$(GREEN)✅ All services started!$(NC)"
 	@echo "$(YELLOW)Backend:$(NC) http://localhost:8080"
 	@echo "$(YELLOW)gRPC:$(NC)    localhost:50051"
 	@echo "$(YELLOW)Swagger:$(NC) http://localhost:8080/swagger/"
+	@echo "$(YELLOW)Frontend:$(NC) http://localhost:3000"
 	@echo ""
 	@echo "$(BLUE)To stop: make stop-all$(NC)"
 
 run-backend-bg: ## Chạy backend ở background
 	@echo "$(BLUE)🚀 Starting backend in background...$(NC)"
-	@cd backend && nohup go run cmd/server/main.go > ../logs/backend.log 2>&1 & echo $$! > ../logs/backend.pid
-	@echo "$(GREEN)✅ Backend started (PID: $$(cat logs/backend.pid))$(NC)"
+	@mkdir -p logs
+	@(cd backend && nohup go run cmd/server/main.go > ../logs/backend-rest.log 2> ../logs/backend-grpc.log &); sleep 1; \
+	PIDS=$$(pgrep -f 'cmd/server/main.go' | tr '\n' ' '); \
+	[ -n "$$PIDS" ] && echo "$$PIDS" > logs/backend.pid || true
+	@echo "$(GREEN)✅ Backend started:$(NC)"
+	@[ -f logs/backend.pid ] && echo "   PIDs: $$(cat logs/backend.pid)" || echo "   PIDs: (failed)"
+	@echo "   Logs: logs/backend-rest.log (REST), logs/backend-grpc.log (gRPC)$(NC)"
 
 run-agent-bg: ## Chạy agent ở background
 	@echo "$(BLUE)🚀 Starting agent in background...$(NC)"
-	@cd agent && nohup go run main.go > ../logs/agent.log 2>&1 & echo $$! > ../logs/agent.pid
-	@echo "$(GREEN)✅ Agent started (PID: $$(cat logs/agent.pid))$(NC)"
+	@mkdir -p logs
+	@LOGS_DIR="$$(pwd)/logs"; (cd agent && nohup go run main.go > $$LOGS_DIR/agent.log 2>&1 &); sleep 0.5; \
+	PID=$$(pgrep -f 'agent.*go run main' | head -1); \
+	[ -n "$$PID" ] && echo $$PID > logs/agent.pid || true
+	@echo "$(GREEN)✅ Agent started (PID: $$([ -f logs/agent.pid ] && cat logs/agent.pid || echo 'failed'))$(NC)"
+
+run-frontend-bg: ## Chạy frontend ở background
+	@echo "$(BLUE)🚀 Starting frontend in background...$(NC)"
+	@mkdir -p logs
+	@LOGS_DIR="$$(pwd)/logs"; (cd frontend && nohup npm run dev > $$LOGS_DIR/frontend.log 2>&1 &); sleep 0.5; \
+	PID=$$(pgrep -f 'frontend.*npm' | head -1); \
+	[ -n "$$PID" ] && echo $$PID > logs/frontend.pid || true
+	@echo "$(GREEN)✅ Frontend started (PID: $$([ -f logs/frontend.pid ] && cat logs/frontend.pid || echo 'failed'))$(NC)"
 
 ##@ Stop
 
-stop-all: stop-backend stop-agent ## Dừng tất cả services
+stop-all: stop-backend stop-agent stop-frontend ## Dừng tất cả services
 	@echo "$(GREEN)✅ All services stopped!$(NC)"
 
 stop-backend: ## Dừng backend service
 	@if [ -f logs/backend.pid ]; then \
-		echo "$(BLUE)🛑 Stopping backend (PID: $$(cat logs/backend.pid))...$(NC)"; \
-		kill $$(cat logs/backend.pid) 2>/dev/null || true; \
+		echo "$(BLUE)🛑 Stopping backend (PIDs: $$(cat logs/backend.pid))...$(NC)"; \
+		for pid in $$(cat logs/backend.pid); do \
+			kill -9 $$pid 2>/dev/null || true; \
+		done; \
 		rm -f logs/backend.pid; \
 		echo "$(GREEN)✅ Backend stopped$(NC)"; \
 	else \
@@ -119,6 +150,16 @@ stop-agent: ## Dừng agent
 		echo "$(GREEN)✅ Agent stopped$(NC)"; \
 	else \
 		echo "$(YELLOW)⚠️  Agent not running (no PID file)$(NC)"; \
+	fi
+
+stop-frontend: ## Dừng frontend
+	@if [ -f logs/frontend.pid ]; then \
+		echo "$(BLUE)🛑 Stopping frontend (PID: $$(cat logs/frontend.pid))...$(NC)"; \
+		kill $$(cat logs/frontend.pid) 2>/dev/null || true; \
+		rm -f logs/frontend.pid; \
+		echo "$(GREEN)✅ Frontend stopped$(NC)"; \
+	else \
+		echo "$(YELLOW)⚠️  Frontend not running (no PID file)$(NC)"; \
 	fi
 
 ##@ Generate
@@ -256,8 +297,16 @@ db-seed: ## Seed database (future)
 status: ## Kiểm tra trạng thái services
 	@echo "$(BLUE)📊 Service Status:$(NC)"
 	@echo ""
-	@if [ -f logs/backend.pid ] && kill -0 $$(cat logs/backend.pid) 2>/dev/null; then \
-		echo "$(GREEN)✅ Backend:$(NC) Running (PID: $$(cat logs/backend.pid))"; \
+	@if [ -f logs/backend.pid ]; then \
+		RUNNING=true; \
+		for pid in $$(cat logs/backend.pid); do \
+			kill -0 $$pid 2>/dev/null || RUNNING=false; \
+		done; \
+		if [ "$$RUNNING" = "true" ]; then \
+			echo "$(GREEN)✅ Backend:$(NC) Running (PIDs: $$(cat logs/backend.pid)) - REST + gRPC"; \
+		else \
+			echo "$(RED)❌ Backend:$(NC) Not running (stale PID file)"; \
+		fi; \
 	else \
 		echo "$(RED)❌ Backend:$(NC) Not running"; \
 	fi
@@ -265,6 +314,11 @@ status: ## Kiểm tra trạng thái services
 		echo "$(GREEN)✅ Agent:$(NC)   Running (PID: $$(cat logs/agent.pid))"; \
 	else \
 		echo "$(RED)❌ Agent:$(NC)   Not running"; \
+	fi
+	@if [ -f logs/frontend.pid ] && kill -0 $$(cat logs/frontend.pid) 2>/dev/null; then \
+		echo "$(GREEN)✅ Frontend:$(NC) Running (PID: $$(cat logs/frontend.pid))"; \
+	else \
+		echo "$(RED)❌ Frontend:$(NC) Not running"; \
 	fi
 	@echo ""
 	@echo "$(BLUE)📂 Build Artifacts:$(NC)"
@@ -280,21 +334,37 @@ status: ## Kiểm tra trạng thái services
 logs: ## Xem logs
 	@echo "$(BLUE)📝 Recent logs:$(NC)"
 	@echo ""
-	@if [ -f logs/backend.log ]; then \
-		echo "$(YELLOW)=== Backend Logs (last 20 lines) ===$(NC)"; \
-		tail -20 logs/backend.log; \
+	@if [ -f logs/backend-rest.log ]; then \
+		echo "$(YELLOW)=== Backend REST Logs (last 15 lines) ===$(NC)"; \
+		tail -15 logs/backend-rest.log; \
+		echo ""; \
+	fi
+	@if [ -f logs/backend-grpc.log ]; then \
+		echo "$(YELLOW)=== Backend gRPC Logs (last 15 lines) ===$(NC)"; \
+		tail -15 logs/backend-grpc.log; \
 		echo ""; \
 	fi
 	@if [ -f logs/agent.log ]; then \
-		echo "$(YELLOW)=== Agent Logs (last 20 lines) ===$(NC)"; \
-		tail -20 logs/agent.log; \
+		echo "$(YELLOW)=== Agent Logs (last 15 lines) ===$(NC)"; \
+		tail -15 logs/agent.log; \
+		echo ""; \
+	fi
+	@if [ -f logs/frontend.log ]; then \
+		echo "$(YELLOW)=== Frontend Logs (last 15 lines) ===$(NC)"; \
+		tail -15 logs/frontend.log; \
 	fi
 
-logs-backend: ## Xem backend logs
-	@tail -f logs/backend.log
+logs-backend: ## Xem backend REST logs
+	@tail -f logs/backend-rest.log
+
+logs-backend-grpc: ## Xem backend gRPC logs
+	@tail -f logs/backend-grpc.log
 
 logs-agent: ## Xem agent logs
 	@tail -f logs/agent.log
+
+logs-frontend: ## Xem frontend logs
+	@tail -f logs/frontend.log
 
 version: ## Hiển thị version info
 	@echo "$(BLUE)📌 Smart Monitor Version Information:$(NC)"

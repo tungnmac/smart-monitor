@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.0
 // - protoc             v6.33.2
-// source: monitor.proto
+// source: monitor/monitor.proto
 
 package monitor
 
@@ -19,6 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	MonitorService_ListAgents_FullMethodName    = "/monitor.MonitorService/ListAgents"
 	MonitorService_RegisterAgent_FullMethodName = "/monitor.MonitorService/RegisterAgent"
 	MonitorService_ControlAgent_FullMethodName  = "/monitor.MonitorService/ControlAgent"
 	MonitorService_BlockAgent_FullMethodName    = "/monitor.MonitorService/BlockAgent"
@@ -36,6 +37,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MonitorServiceClient interface {
+	// List all registered agents
+	ListAgents(ctx context.Context, in *ListAgentsRequest, opts ...grpc.CallOption) (*ListAgentsResponse, error)
 	// Register Agent - Agent must register first before streaming
 	RegisterAgent(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	// Control Agent Operations
@@ -61,6 +64,16 @@ type monitorServiceClient struct {
 
 func NewMonitorServiceClient(cc grpc.ClientConnInterface) MonitorServiceClient {
 	return &monitorServiceClient{cc}
+}
+
+func (c *monitorServiceClient) ListAgents(ctx context.Context, in *ListAgentsRequest, opts ...grpc.CallOption) (*ListAgentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAgentsResponse)
+	err := c.cc.Invoke(ctx, MonitorService_ListAgents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *monitorServiceClient) RegisterAgent(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error) {
@@ -180,6 +193,8 @@ func (c *monitorServiceClient) GetStats(ctx context.Context, in *StatsRequest, o
 // All implementations must embed UnimplementedMonitorServiceServer
 // for forward compatibility.
 type MonitorServiceServer interface {
+	// List all registered agents
+	ListAgents(context.Context, *ListAgentsRequest) (*ListAgentsResponse, error)
 	// Register Agent - Agent must register first before streaming
 	RegisterAgent(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	// Control Agent Operations
@@ -207,6 +222,9 @@ type MonitorServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedMonitorServiceServer struct{}
 
+func (UnimplementedMonitorServiceServer) ListAgents(context.Context, *ListAgentsRequest) (*ListAgentsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAgents not implemented")
+}
 func (UnimplementedMonitorServiceServer) RegisterAgent(context.Context, *RegisterRequest) (*RegisterResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RegisterAgent not implemented")
 }
@@ -259,6 +277,24 @@ func RegisterMonitorServiceServer(s grpc.ServiceRegistrar, srv MonitorServiceSer
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&MonitorService_ServiceDesc, srv)
+}
+
+func _MonitorService_ListAgents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAgentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MonitorServiceServer).ListAgents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MonitorService_ListAgents_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MonitorServiceServer).ListAgents(ctx, req.(*ListAgentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _MonitorService_RegisterAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -456,6 +492,10 @@ var MonitorService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*MonitorServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "ListAgents",
+			Handler:    _MonitorService_ListAgents_Handler,
+		},
+		{
 			MethodName: "RegisterAgent",
 			Handler:    _MonitorService_RegisterAgent_Handler,
 		},
@@ -503,5 +543,5 @@ var MonitorService_ServiceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
-	Metadata: "monitor.proto",
+	Metadata: "monitor/monitor.proto",
 }

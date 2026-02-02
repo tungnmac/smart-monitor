@@ -39,6 +39,64 @@ func NewMonitorServiceServer(
 	}
 }
 
+// ListAgents returns all registered agents with their status and metrics
+func (s *MonitorServiceServer) ListAgents(ctx context.Context, req *pb.ListAgentsRequest) (*pb.ListAgentsResponse, error) {
+	log.Printf("ListAgents called")
+
+	// Get all agents from the registry
+	agents, err := s.monitorUseCase.ListAllAgents(ctx)
+	if err != nil {
+		log.Printf("Failed to list agents: %v", err)
+		return &pb.ListAgentsResponse{
+			Agents: []*pb.AgentInfo{},
+			Total:  0,
+		}, nil
+	}
+
+	// Convert to protobuf format
+	var pbAgents []*pb.AgentInfo
+	for _, agent := range agents {
+		// Determine status based on last_auth_at
+		status := "offline"
+		if time.Since(agent.LastAuthAt) < 2*time.Minute {
+			status = "online"
+		} else if time.Since(agent.LastAuthAt) < 10*time.Minute {
+			status = "degraded"
+		}
+
+		// Get latest metrics for this agent
+		stats, _ := s.monitorUseCase.GetStats(ctx, agent.Hostname)
+		cpu, ram, disk := 0.0, 0.0, 0.0
+		if stats != nil {
+			cpu = stats.CPU
+			ram = stats.RAM
+			disk = stats.Disk
+		}
+
+		pbAgents = append(pbAgents, &pb.AgentInfo{
+			Id:           agent.AgentID,
+			Host:         agent.Hostname,
+			Env:          agent.Metadata["environment"],
+			Region:       agent.Metadata["location"],
+			Status:       status,
+			Version:      agent.AgentVersion,
+			Cpu:          cpu,
+			Ram:          ram,
+			Disk:         disk,
+			IpAddress:    agent.IPAddress,
+			LastSeen:     agent.LastAuthAt.Unix(),
+			RegisteredAt: agent.RegisteredAt.Unix(),
+		})
+	}
+
+	log.Printf("✓ Returning %d agents", len(pbAgents))
+
+	return &pb.ListAgentsResponse{
+		Agents: pbAgents,
+		Total:  int32(len(pbAgents)),
+	}, nil
+}
+
 // RegisterAgent handles agent registration
 func (s *MonitorServiceServer) RegisterAgent(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
 	log.Printf("Registration request from hostname: %s, IP: %s", req.Hostname, req.IpAddress)

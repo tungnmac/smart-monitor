@@ -48,6 +48,8 @@ func (s *UserAuthService) SignUp(ctx context.Context, email, username, password,
 // SignIn validates credentials and returns a JWT token
 func (s *UserAuthService) SignIn(ctx context.Context, email, password string) (string, *entity.User, error) {
 	u, err := s.users.GetByEmail(ctx, email)
+
+	fmt.Println("UserAuthService SignIn:", email, u, err)
 	if err != nil {
 		return "", nil, fmt.Errorf("invalid credentials")
 	}

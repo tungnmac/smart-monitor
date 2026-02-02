@@ -62,7 +62,11 @@ func main() {
 		fmt.Println("\n  RAM Top 3:")
 		showTopProcessesByMemory(3)
 
-		// GPU check
+		// 7. Show all processes using > 5% CPU or > 5% RAM
+		fmt.Println("\n🔍 Processes using > 5% CPU or > 5% RAM:")
+		showHighUsageProcesses(5.0, 5.0)
+
+		// GPU check.
 		checkGPU()
 
 		fmt.Println("\n" + strings.Repeat("─", 64))
@@ -245,4 +249,97 @@ func truncateString(s string, maxLen int) string {
 		return s[:maxLen]
 	}
 	return s[:maxLen-3] + "..."
+}
+
+// showHighUsageProcesses displays all processes using more than specified CPU% or RAM%
+func showHighUsageProcesses(cpuThreshold, ramThreshold float64) {
+	procs, err := process.Processes()
+	if err != nil {
+		fmt.Printf("   Error getting processes: %v\n", err)
+		return
+	}
+
+	var highUsageProcs []ProcessInfo
+	for _, p := range procs {
+		cpuPercent, _ := p.CPUPercent()
+		memPercent, _ := p.MemoryPercent()
+
+		// Check if process exceeds either threshold
+		if cpuPercent > cpuThreshold || float64(memPercent) > ramThreshold {
+			name, _ := p.Name()
+			memInfo, _ := p.MemoryInfo()
+			statusArr, _ := p.Status()
+			username, _ := p.Username()
+
+			statusStr := ""
+			if len(statusArr) > 0 {
+				statusStr = statusArr[0]
+			}
+
+			memMB := float64(0)
+			if memInfo != nil {
+				memMB = float64(memInfo.RSS) / 1024 / 1024
+			}
+
+			highUsageProcs = append(highUsageProcs, ProcessInfo{
+				PID:        p.Pid,
+				Name:       name,
+				CPUPercent: cpuPercent,
+				MemoryMB:   memMB,
+				MemPercent: memPercent,
+				Status:     statusStr,
+				Username:   username,
+			})
+		}
+	}
+
+	if len(highUsageProcs) == 0 {
+		fmt.Printf("   No processes exceeding %.1f%% CPU or %.1f%% RAM\n", cpuThreshold, ramThreshold)
+		return
+	}
+
+	// Sort by CPU percentage (descending)
+	sort.Slice(highUsageProcs, func(i, j int) bool {
+		return highUsageProcs[i].CPUPercent > highUsageProcs[j].CPUPercent
+	})
+
+	fmt.Printf("   %-8s %-20s %-10s %-10s %-12s %-10s %s\n",
+		"PID", "NAME", "CPU%", "RAM%", "RAM(MB)", "STATUS", "USER")
+	fmt.Println("   " + strings.Repeat("─", 90))
+
+	for _, p := range highUsageProcs {
+		userName := p.Username
+		if len(userName) > 12 {
+			userName = userName[:9] + "..."
+		}
+
+		statusStr := p.Status
+		if len(statusStr) > 10 {
+			statusStr = statusStr[:7] + "..."
+		}
+
+		// Highlight critical usage
+		cpuIndicator := ""
+		if p.CPUPercent > cpuThreshold {
+			cpuIndicator = "🔥"
+		}
+
+		ramIndicator := ""
+		if float64(p.MemPercent) > ramThreshold {
+			ramIndicator = "⚠️ "
+		}
+
+		fmt.Printf("   %-8d %-20s %s%-8.2f %s%-8.2f %-12.1f %-10s %s\n",
+			p.PID,
+			truncateString(p.Name, 20),
+			cpuIndicator,
+			p.CPUPercent,
+			ramIndicator,
+			p.MemPercent,
+			p.MemoryMB,
+			statusStr,
+			userName)
+	}
+
+	fmt.Printf("\n   Total: %d processes exceeding thresholds\n", len(highUsageProcs))
 }

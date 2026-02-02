@@ -78,3 +78,19 @@ Desktop.ini
 # Backup files
 *.bak
 *.backup
+
+
+# Build directories
+build/
+out/
+.dist/
+./agent/bin/
+./backend/bin/
+./monitor-test/bin/
+
+# Logs
+logs/
+*.log
+
+# Misc
+*.orig 
