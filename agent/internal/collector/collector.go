@@ -11,7 +11,18 @@ import (
 	"github.com/shirou/gopsutil/v3/load"
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/shirou/gopsutil/v3/net"
+	"github.com/shirou/gopsutil/v3/process"
 )
+
+// Process holds information about a running process
+type Process struct {
+	PID     int32
+	Name    string
+	CPU     float64
+	Memory  float64
+	Command string
+	Port    int32
+}
 
 // Metrics holds collected system metrics
 type Metrics struct {
@@ -173,15 +184,57 @@ func (c *Collector) collectHostInfo(metrics *Metrics) error {
 
 // collectNetwork collects network metrics
 func (c *Collector) collectNetwork(metrics *Metrics) error {
-	netIO, err := net.IOCounters(false)
+	stats, err := net.IOCounters(false)
 	if err != nil {
 		return err
 	}
+	if len(stats) > 0 {
+		metrics.NetworkSent = stats[0].BytesSent
+		metrics.NetworkRecv = stats[0].BytesRecv
+	}
+	return nil
+}
 
-	if len(netIO) > 0 {
-		metrics.NetworkSent = netIO[0].BytesSent
-		metrics.NetworkRecv = netIO[0].BytesRecv
+// CollectProcesses gathers information about all running processes
+func (c *Collector) CollectProcesses() ([]*Process, error) {
+	procs, err := process.Processes()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get processes: %w", err)
 	}
 
-	return nil
+	var result []*Process
+	// Limit to top 50 processes by CPU/Memory or just get all and filter?
+	// For now, let's get all but keep it efficient.
+	for i, p := range procs {
+		if i > 100 { // Safety limit
+			break
+		}
+
+		name, _ := p.Name()
+		cpu, _ := p.CPUPercent()
+		mem, _ := p.MemoryPercent()
+		cmd, _ := p.Cmdline()
+
+		var procPort int32
+		conns, err := p.Connections()
+		if err == nil {
+			for _, conn := range conns {
+				if conn.Status == "LISTEN" && conn.Laddr.Port > 0 {
+					procPort = int32(conn.Laddr.Port)
+					break
+				}
+			}
+		}
+
+		result = append(result, &Process{
+			PID:     p.Pid,
+			Name:    name,
+			CPU:     cpu,
+			Memory:  float64(mem),
+			Command: cmd,
+			Port:    procPort,
+		})
+	}
+
+	return result, nil
 }

@@ -178,7 +178,7 @@ service MonitorService {
   }
 
   // Stream từ Agent gửi về Server (requires authentication)
-  rpc StreamStats (stream StatsRequest) returns (StatsResponse) {
+  rpc StreamStats (stream StatsRequest) returns (stream StatsResponse) {
     option (google.api.http) = {
       post: "/v1/stats/stream"
       body: "*"
@@ -261,6 +261,16 @@ message StatsRequest {
     description: "Authentication token obtained during registration";
     example: "\"3f4a8b2c1d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2\"";
   }];
+  repeated ProcessInfo processes = 10;
+}
+
+message ProcessInfo {
+  int32 pid = 1;
+  string name = 2;
+  double cpu = 3;
+  double memory = 4;
+  string command = 5;
+  int32 port = 6;
 }
 
 message StatsResponse {
@@ -272,6 +282,19 @@ message StatsResponse {
     description: "Unix timestamp of the response";
     example: "1737882600";
   }];
+  Command command = 3;
+}
+
+message Command {
+  enum Type {
+    NONE = 0;
+    KILL_PROCESS = 1;
+    RESTART_AGENT = 2;
+    UPDATE_CONFIG = 3;
+    REFRESH_STATS = 4;
+  }
+  Type type = 1;
+  map<string, string> args = 2; // e.g., "pid": "1234"
 }
 
 // Registration messages

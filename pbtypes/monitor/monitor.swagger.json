@@ -440,9 +440,18 @@
         "operationId": "MonitorService_StreamStats",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "A successful response.(streaming responses)",
             "schema": {
-              "$ref": "#/definitions/monitorStatsResponse"
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/monitorStatsResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/rpcStatus"
+                }
+              },
+              "title": "Stream result of monitorStatsResponse"
             }
           },
           "default": {
@@ -709,6 +718,32 @@
         }
       }
     },
+    "monitorCommand": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/monitorCommandType"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "e.g., \"pid\": \"1234\""
+        }
+      }
+    },
+    "monitorCommandType": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "KILL_PROCESS",
+        "RESTART_AGENT",
+        "UPDATE_CONFIG",
+        "REFRESH_STATS"
+      ],
+      "default": "NONE"
+    },
     "monitorControlAgentResponse": {
       "type": "object",
       "properties": {
@@ -868,6 +903,33 @@
         }
       }
     },
+    "monitorProcessInfo": {
+      "type": "object",
+      "properties": {
+        "pid": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "name": {
+          "type": "string"
+        },
+        "cpu": {
+          "type": "number",
+          "format": "double"
+        },
+        "memory": {
+          "type": "number",
+          "format": "double"
+        },
+        "command": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
     "monitorRegisterRequest": {
       "type": "object",
       "properties": {
@@ -990,6 +1052,13 @@
           "type": "string",
           "example": "3f4a8b2c1d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2",
           "description": "Authentication token obtained during registration"
+        },
+        "processes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/monitorProcessInfo"
+          }
         }
       }
     },
@@ -1006,6 +1075,9 @@
           "format": "int64",
           "example": 1737882600,
           "description": "Unix timestamp of the response"
+        },
+        "command": {
+          "$ref": "#/definitions/monitorCommand"
         }
       }
     },

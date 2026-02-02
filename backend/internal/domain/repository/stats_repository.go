@@ -50,6 +50,9 @@ type AgentRegistryRepository interface {
 	// GetByAgentID retrieves an agent by agent ID
 	GetByAgentID(ctx context.Context, agentID string) (*entity.AgentRegistry, error)
 
+	// GetByHostname retrieves an agent by hostname
+	GetByHostname(ctx context.Context, hostname string) (*entity.AgentRegistry, error)
+
 	// GetByToken retrieves an agent by access token
 	GetByToken(ctx context.Context, token string) (*entity.AgentRegistry, error)
 
@@ -64,4 +67,7 @@ type AgentRegistryRepository interface {
 
 	// GetActive retrieves all active agents
 	GetActive(ctx context.Context) ([]*entity.AgentRegistry, error)
+
+	// Cleanup removes duplicate or stale agent entries
+	Cleanup(ctx context.Context) error
 }

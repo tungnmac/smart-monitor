@@ -31,6 +31,16 @@ type OpenSearchConfig struct {
 	InsecureSkipVerify bool
 }
 
+// DatabaseConfig holds database configuration
+type DatabaseConfig struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
+	DBName   string
+	SSLMode  string
+}
+
 // Load loads configuration from environment variables
 func Load() *Config {
 	return &Config{
@@ -63,6 +73,25 @@ func LoadOpenSearchConfig() *OpenSearchConfig {
 		Username:           getEnv("OPENSEARCH_USERNAME", "admin"),
 		Password:           getEnv("OPENSEARCH_PASSWORD", "admin"),
 		InsecureSkipVerify: insecureSkipVerify,
+	}
+}
+
+// LoadDatabaseConfig loads database configuration
+func LoadDatabaseConfig() *DatabaseConfig {
+	port := 5432
+	if portStr := os.Getenv("DB_PORT"); portStr != "" {
+		if p, err := strconv.Atoi(portStr); err == nil {
+			port = p
+		}
+	}
+
+	return &DatabaseConfig{
+		Host:     getEnv("DB_HOST", "localhost"),
+		Port:     port,
+		User:     getEnv("DB_USER", "postgres"),
+		Password: getEnv("DB_PASSWORD", "postgres"),
+		DBName:   getEnv("DB_NAME", "smart_monitor"),
+		SSLMode:  getEnv("DB_SSLMODE", "disable"),
 	}
 }
 

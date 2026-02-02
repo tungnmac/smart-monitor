@@ -6,6 +6,8 @@ import {
   fetchAgents,
   fetchMetrics,
   fetchPolicies,
+  fetchProcesses,
+  killProcess,
   streamMetrics,
   controlAgent,
   blockAgent,
@@ -138,4 +140,49 @@ export function useAgentControl() {
   }, []);
 
   return { restart, block, unblock, loading, error };
+}
+
+export function useProcesses(hostname?: string, sortBy: string = "cpu", order: string = "desc") {
+  const [processes, setProcesses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [killingPid, setKillingPid] = useState<number | null>(null);
+
+  const load = useCallback(async () => {
+    if (!hostname) return;
+    setLoading(true);
+    try {
+      const data = await fetchProcesses(hostname, sortBy, order);
+      setProcesses(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [hostname, sortBy, order]);
+
+  const kill = useCallback(async (pid: number) => {
+    if (!hostname) return false;
+    setKillingPid(pid);
+    try {
+      const ok = await killProcess(hostname, pid);
+      if (ok) {
+        // Refresh after a short delay to allow agent to process
+        setTimeout(load, 1000);
+      } else {
+        setError("Failed to kill process");
+      }
+      return ok;
+    } finally {
+      setKillingPid(null);
+    }
+  }, [hostname, load]);
+
+  useEffect(() => {
+    load();
+    const timer = setInterval(load, 5000);
+    return () => clearInterval(timer);
+  }, [load]);
+
+  return { processes, loading, error, killingPid, kill, refresh: load };
 }

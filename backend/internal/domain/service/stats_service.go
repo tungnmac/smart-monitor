@@ -35,7 +35,7 @@ func (s *StatsService) ProcessStats(ctx context.Context, stats *entity.Stats, ag
 	}
 
 	// Update or create host
-	host, err := s.hostRepo.Get(ctx, stats.AgentID)
+	host, err := s.hostRepo.Get(ctx, stats.Hostname)
 	if err != nil {
 		// Create new host if not exists
 		host = entity.NewHost(stats.Hostname, stats.IPAddress, stats.AgentID)

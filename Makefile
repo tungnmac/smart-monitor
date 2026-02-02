@@ -45,18 +45,18 @@ build: build-backend build-agent ## Build tất cả services
 
 build-backend: ## Build backend service
 	@echo "$(BLUE)🔨 Building backend...$(NC)"
-	@cd backend && go build -o backend/bin cmd/server/main.go 
-	@echo "$(GREEN)✅ Backend built: backend/bin$(NC)"
+	@cd backend && CGO_ENABLED=0 go build -o bin/server cmd/server/main.go 
+	@echo "$(GREEN)✅ Backend built: backend/bin/server$(NC)"
 
 build-agent: ## Build agent
 	@echo "$(BLUE)🔨 Building agent...$(NC)"
-	@cd agent && go build -o agent/bin main.go
-	@echo "$(GREEN)✅ Agent built: agent/bin$(NC)"
+	@cd agent && CGO_ENABLED=0 go build -o bin/agent main.go
+	@echo "$(GREEN)✅ Agent built: agent/bin/agent$(NC)"
 
 build-monitor-test: ## Build monitor test tool
 	@echo "$(BLUE)🔨 Building monitor-test...$(NC)"
-	@cd monitor-test && go build -o monitor-test/bin main.go
-	@echo "$(GREEN)✅ Monitor-test built: monitor-test/bin$(NC)"
+	@cd monitor-test && CGO_ENABLED=0 go build -o bin/monitor-test main.go
+	@echo "$(GREEN)✅ Monitor-test built: monitor-test/bin/monitor-test$(NC)"
 
 build-frontend: ## Build frontend
 	@echo "$(BLUE)🔨 Building frontend...$(NC)"

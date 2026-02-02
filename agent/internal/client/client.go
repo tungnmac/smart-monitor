@@ -136,11 +136,9 @@ func (c *Client) StreamMetrics(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			// Graceful shutdown
-			resp, err := stream.CloseAndRecv()
+			err := stream.CloseSend()
 			if err != nil {
 				log.Printf("Error closing stream: %v", err)
-			} else {
-				log.Printf("Final response: %s", resp.Message)
 			}
 			return ctx.Err()
 
@@ -161,6 +159,24 @@ func (c *Client) sendMetrics(stream pb.MonitorService_StreamStatsClient) error {
 		return fmt.Errorf("failed to collect metrics: %w", err)
 	}
 
+	// Collect processes
+	processes, err := c.collector.CollectProcesses()
+	if err != nil {
+		log.Printf("Warning: failed to collect processes: %v", err)
+	}
+
+	var pbProcesses []*pb.ProcessInfo
+	for _, p := range processes {
+		pbProcesses = append(pbProcesses, &pb.ProcessInfo{
+			Pid:     p.PID,
+			Name:    p.Name,
+			Cpu:     p.CPU,
+			Memory:  p.Memory,
+			Command: p.Command,
+			Port:    p.Port,
+		})
+	}
+
 	// Build request
 	req := &pb.StatsRequest{
 		Hostname:     c.config.Hostname,
@@ -172,6 +188,7 @@ func (c *Client) sendMetrics(stream pb.MonitorService_StreamStatsClient) error {
 		Ram:          metrics.RAMPercent,
 		Disk:         metrics.DiskPercent,
 		Metadata:     c.config.Metadata,
+		Processes:    pbProcesses,
 	}
 
 	// Send to backend
@@ -179,8 +196,8 @@ func (c *Client) sendMetrics(stream pb.MonitorService_StreamStatsClient) error {
 		return fmt.Errorf("failed to send: %w", err)
 	}
 
-	log.Printf("✓ Sent [%s]: CPU=%.2f%%, RAM=%.2f%%, Disk=%.2f%%",
-		c.credentials.AgentID, metrics.CPUPercent, metrics.RAMPercent, metrics.DiskPercent)
+	log.Printf("✓ Sent [%s]: CPU=%.2f%%, RAM=%.2f%%, Disk=%.2f%%, Procs=%d",
+		c.credentials.AgentID, metrics.CPUPercent, metrics.RAMPercent, metrics.DiskPercent, len(pbProcesses))
 
 	return nil
 }

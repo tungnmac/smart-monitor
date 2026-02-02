@@ -15,11 +15,13 @@ import (
 	"time"
 
 	"smart-monitor/backend/internal/application/usecase"
+	"smart-monitor/backend/internal/domain/repository"
 	"smart-monitor/backend/internal/domain/service"
 	grpchandler "smart-monitor/backend/internal/infrastructure/grpc"
 	httphandler "smart-monitor/backend/internal/infrastructure/http"
 	"smart-monitor/backend/internal/infrastructure/opensearch"
 	"smart-monitor/backend/internal/infrastructure/persistence"
+	pgrepo "smart-monitor/backend/internal/infrastructure/persistence/postgres"
 	"smart-monitor/backend/pkg/config"
 	pb "smart-monitor/pbtypes/monitor"
 	processpb "smart-monitor/pbtypes/process"
@@ -29,6 +31,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 func main() {
@@ -39,13 +43,47 @@ func main() {
 	cfg := config.Load()
 	log.Printf("Configuration loaded: gRPC=:%s, HTTP=:%s", cfg.Server.GRPCPort, cfg.Server.HTTPPort)
 
-	// Initialize in-memory repositories as fallback
-	statsRepo := persistence.NewInMemoryStatsRepository()
-	hostRepo := persistence.NewInMemoryHostRepository()
-	agentRepo := persistence.NewInMemoryAgentRegistryRepository()
-	policyRepo := persistence.NewInMemoryPolicyRepository()
-	userRepo := persistence.NewInMemoryUserRepository()
+	// Initialize repositories with interface types
+	var (
+		statsRepo  repository.StatsRepository         = persistence.NewInMemoryStatsRepository()
+		hostRepo   repository.HostRepository          = persistence.NewInMemoryHostRepository()
+		agentRepo  repository.AgentRegistryRepository = persistence.NewInMemoryAgentRegistryRepository()
+		policyRepo repository.PolicyRepository        = persistence.NewInMemoryPolicyRepository()
+		userRepo   repository.UserRepository          = persistence.NewInMemoryUserRepository()
+	)
 	log.Println("✓ In-memory repositories initialized (fallback)")
+
+	// Initialize PostgreSQL
+	dbCfg := config.LoadDatabaseConfig()
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s",
+		dbCfg.Host, dbCfg.User, dbCfg.Password, dbCfg.DBName, dbCfg.Port, dbCfg.SSLMode)
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Printf("⚠ PostgreSQL connection failed: %v (continuing with in-memory storage)", err)
+	} else {
+		log.Println("✓ PostgreSQL connected")
+
+		// Migrate schemas
+		err = db.AutoMigrate(
+			&pgrepo.AgentModel{},
+			&pgrepo.HostModel{},
+			&pgrepo.PolicyModel{},
+			&pgrepo.UserModel{},
+		)
+		if err != nil {
+			log.Printf("⚠ PostgreSQL migration failed: %v", err)
+		} else {
+			log.Println("✓ PostgreSQL database schema migrated")
+
+			// Replace repositories with Postgres implementations
+			agentRepo = pgrepo.NewPostgresAgentRepository(db)
+			hostRepo = pgrepo.NewPostgresHostRepository(db)
+			policyRepo = pgrepo.NewPostgresPolicyRepository(db)
+			userRepo = pgrepo.NewPostgresUserRepository(db)
+			log.Println("✓ Using PostgreSQL for registry storage")
+		}
+	}
 
 	// Initialize OpenSearch
 	var osClient *opensearch.Client
@@ -54,7 +92,7 @@ func main() {
 	var osEventsRepo *opensearch.EventsRepository
 
 	osConfig := config.LoadOpenSearchConfig()
-	osClient, err := opensearch.NewClient(osConfig.Host, osConfig.Port, osConfig.Username, osConfig.Password, osConfig.InsecureSkipVerify)
+	osClient, err = opensearch.NewClient(osConfig.Host, osConfig.Port, osConfig.Username, osConfig.Password, osConfig.InsecureSkipVerify)
 	if err != nil {
 		log.Printf("⚠ OpenSearch connection failed: %v (continuing with in-memory storage)", err)
 	} else {
@@ -95,7 +133,7 @@ func main() {
 	log.Println("✓ Domain services initialized")
 
 	// Initialize use cases
-	monitorUseCase := usecase.NewMonitorUseCase(statsService)
+	monitorUseCase := usecase.NewMonitorUseCase(statsService, controlService)
 	monitorUseCase.SetAgentRegistry(agentRepo)
 	log.Println("✓ Use cases initialized")
 
@@ -190,6 +228,7 @@ func startHTTPServer(cfg *config.Config, monitorUseCase *usecase.MonitorUseCase,
 	httpMux.Handle("/ready", httphandler.NewReadyHandler(monitorUseCase))
 	httpMux.Handle("/live", httphandler.NewLiveHandler())
 	httpMux.Handle("/metrics", httphandler.NewMetricsHandler(monitorUseCase))
+	httpMux.Handle("/tools/cleanup", httphandler.NewCleanupHandler(monitorUseCase))
 
 	// Auth endpoints
 	authHandler := httphandler.NewAuthHandler(userAuthService)

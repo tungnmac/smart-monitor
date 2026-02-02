@@ -8,6 +8,9 @@ import (
 	"log"
 	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"smart-monitor/backend/internal/application/dto"
 	"smart-monitor/backend/internal/application/usecase"
 	"smart-monitor/backend/internal/domain/entity"
@@ -132,18 +135,62 @@ func (s *MonitorServiceServer) RegisterAgent(ctx context.Context, req *pb.Regist
 
 // StreamStats handles bidirectional streaming from agents
 func (s *MonitorServiceServer) StreamStats(stream pb.MonitorService_StreamStatsServer) error {
+	var agentID string
+	commandCh := make(chan *entity.AgentCommand, 10)
+	ctx, cancel := context.WithCancel(stream.Context())
+	defer cancel()
+
+	// Goroutine to send commands back to agent
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case cmd := <-commandCh:
+				pbCmd := &pb.Command{
+					Type: pb.Command_NONE,
+					Args: cmd.Args,
+				}
+
+				switch cmd.Type {
+				case entity.CommandKillProcess:
+					pbCmd.Type = pb.Command_KILL_PROCESS
+				case entity.CommandRestartAgent:
+					pbCmd.Type = pb.Command_RESTART_AGENT
+				case entity.CommandUpdateConfig:
+					pbCmd.Type = pb.Command_UPDATE_CONFIG
+				}
+
+				err := stream.Send(&pb.StatsResponse{
+					Message:   "Executing command",
+					Timestamp: time.Now().Unix(),
+					Command:   pbCmd,
+				})
+				if err != nil {
+					log.Printf("Error sending command to agent %s: %v", agentID, err)
+					return
+				}
+			}
+		}
+	}()
+
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
-			log.Println("Stream closed by client")
-			return stream.SendAndClose(&pb.StatsResponse{
-				Message:   "Stream closed",
-				Timestamp: time.Now().Unix(),
-			})
+			log.Printf("Stream closed by client (agent %s)", agentID)
+			s.controlService.UnregisterCommandChan(agentID)
+			return nil
 		}
 		if err != nil {
-			log.Printf("Error receiving stats: %v", err)
+			log.Printf("Error receiving stats from agent %s: %v", agentID, err)
+			s.controlService.UnregisterCommandChan(agentID)
 			return fmt.Errorf("failed to receive stats: %w", err)
+		}
+
+		// Set agentID if not already set
+		if agentID == "" {
+			agentID = req.AgentId
+			s.controlService.RegisterCommandChan(agentID, commandCh)
 		}
 
 		// Authenticate agent
@@ -154,10 +201,22 @@ func (s *MonitorServiceServer) StreamStats(stream pb.MonitorService_StreamStatsS
 
 		if err := s.authService.ValidateToken(context.Background(), req.AgentId, req.AccessToken); err != nil {
 			log.Printf("Authentication failed for agent %s: %v", req.AgentId, err)
-			continue
+			return status.Errorf(codes.Unauthenticated, "authentication failed: %v", err)
 		}
 
 		// Convert protobuf to DTO
+		var pbProcesses []*dto.ProcessDTO
+		for _, p := range req.GetProcesses() {
+			pbProcesses = append(pbProcesses, &dto.ProcessDTO{
+				PID:     p.Pid,
+				Name:    p.Name,
+				CPU:     p.Cpu,
+				Memory:  p.Memory,
+				Command: p.Command,
+				Port:    p.Port,
+			})
+		}
+
 		statsReq := &dto.StatsRequest{
 			Hostname:     req.Hostname,
 			AgentID:      req.AgentId,
@@ -167,6 +226,7 @@ func (s *MonitorServiceServer) StreamStats(stream pb.MonitorService_StreamStatsS
 			RAM:          req.Ram,
 			Disk:         req.Disk,
 			Metadata:     req.Metadata,
+			Processes:    pbProcesses,
 		}
 
 		// Process through use case
@@ -178,6 +238,17 @@ func (s *MonitorServiceServer) StreamStats(stream pb.MonitorService_StreamStatsS
 		// Log received stats with agent info
 		log.Printf("[Agent:%s | Host:%s | IP:%s] CPU: %.2f%% | RAM: %.2f%% | Disk: %.2f%%",
 			req.AgentId, req.Hostname, req.IpAddress, req.Cpu, req.Ram, req.Disk)
+
+		// Send heartbeat response
+		err = stream.Send(&pb.StatsResponse{
+			Message:   "Stats received",
+			Timestamp: time.Now().Unix(),
+		})
+		if err != nil {
+			log.Printf("Error sending response to agent %s: %v", agentID, err)
+			s.controlService.UnregisterCommandChan(agentID)
+			return err
+		}
 	}
 }
 

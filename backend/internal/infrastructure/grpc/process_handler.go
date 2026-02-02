@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
+	"strings"
 	"time"
 
 	"smart-monitor/backend/internal/domain/service"
@@ -26,14 +28,12 @@ func NewProcessServiceServer(controlService *service.AgentControlService) *Proce
 
 // GetProcesses retrieves list of processes from an agent
 func (s *ProcessServiceServer) GetProcesses(ctx context.Context, req *pb.GetProcessesRequest) (*pb.GetProcessesResponse, error) {
-	log.Printf("GetProcesses request for hostname: %s", req.Hostname)
+	log.Printf("GetProcesses request for hostname: %s (sort: %s %s)", req.Hostname, req.SortBy, req.Order)
 
 	if req.Hostname == "" {
 		return nil, fmt.Errorf("hostname is required")
 	}
 
-	// TODO: Map hostname to agentID properly
-	// For now, using hostname as agentID
 	processes, err := s.controlService.GetProcessList(req.Hostname)
 	if err != nil {
 		log.Printf("Failed to get processes: %v", err)
@@ -43,14 +43,40 @@ func (s *ProcessServiceServer) GetProcesses(ctx context.Context, req *pb.GetProc
 		}, nil
 	}
 
+	// Apply sorting if requested
+	if req.SortBy != "" {
+		sort.Slice(processes, func(i, j int) bool {
+			var less bool
+			switch strings.ToLower(req.SortBy) {
+			case "name":
+				less = processes[i].Name < processes[j].Name
+			case "cpu":
+				less = processes[i].CPU < processes[j].CPU
+			case "memory", "mem":
+				less = processes[i].Memory < processes[j].Memory
+			case "pid":
+				less = processes[i].PID < processes[j].PID
+			default:
+				less = processes[i].CPU > processes[j].CPU // Default to CPU desc
+			}
+
+			if strings.ToLower(req.Order) == "desc" {
+				return !less
+			}
+			return less
+		})
+	}
+
 	// Convert to protobuf format
 	var pbProcesses []*pb.Process
 	for _, proc := range processes {
 		pbProcesses = append(pbProcesses, &pb.Process{
-			Pid:    proc.PID,
-			Name:   proc.Name,
-			Cpu:    proc.CPU,
-			Memory: proc.Memory,
+			Pid:     proc.PID,
+			Name:    proc.Name,
+			Cpu:     proc.CPU,
+			Memory:  proc.Memory,
+			Command: proc.Command,
+			Port:    proc.Port,
 		})
 	}
 

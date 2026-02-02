@@ -5,22 +5,25 @@ import (
 	"context"
 	"smart-monitor/backend/internal/application/dto"
 	"smart-monitor/backend/internal/domain/entity"
+	"smart-monitor/backend/internal/domain/repository"
 	"smart-monitor/backend/internal/domain/service"
 )
 
 // MonitorUseCase handles monitoring use cases
 type MonitorUseCase struct {
-	statsService  *service.StatsService
-	agentRegistry interface {
+	statsService   *service.StatsService
+	controlService *service.AgentControlService
+	agentRegistry  interface {
 		GetAll(ctx context.Context) ([]*entity.AgentRegistry, error)
 	}
 }
 
 // NewMonitorUseCase creates a new MonitorUseCase
-func NewMonitorUseCase(statsService *service.StatsService) *MonitorUseCase {
+func NewMonitorUseCase(statsService *service.StatsService, controlService *service.AgentControlService) *MonitorUseCase {
 	return &MonitorUseCase{
-		statsService:  statsService,
-		agentRegistry: nil, // Will be set separately
+		statsService:   statsService,
+		controlService: controlService,
+		agentRegistry:  nil, // Will be set separately
 	}
 }
 
@@ -37,6 +40,17 @@ func (uc *MonitorUseCase) RecordStats(ctx context.Context, req *dto.StatsRequest
 	stats := entity.NewStats(req.Hostname, req.AgentID, req.IPAddress, req.CPU, req.RAM, req.Disk)
 	if req.Metadata != nil {
 		stats.Metadata = req.Metadata
+	}
+
+	// Process processes if present
+	if len(req.Processes) > 0 {
+		var processes []*entity.Process
+		for _, p := range req.Processes {
+			processes = append(processes, entity.NewProcess(
+				p.PID, p.Name, p.CPU, p.Memory, req.AgentID, req.Hostname, p.Command, p.Port,
+			))
+		}
+		uc.controlService.UpdateAgentProcesses(req.AgentID, processes)
 	}
 
 	// Process through domain service
@@ -100,5 +114,47 @@ func (uc *MonitorUseCase) ListAllAgents(ctx context.Context) ([]*entity.AgentReg
 	if uc.agentRegistry == nil {
 		return []*entity.AgentRegistry{}, nil
 	}
-	return uc.agentRegistry.GetAll(ctx)
+	return uc.agentRepo().GetAll(ctx)
+}
+
+// CleanupAgents removes duplicate/stale agents
+func (uc *MonitorUseCase) CleanupAgents(ctx context.Context) error {
+	repo := uc.agentRepo()
+	if repo == nil {
+		return nil
+	}
+
+	// 1. Get all agents before cleanup to know what we might be deleting
+	allAgents, _ := repo.GetAll(ctx)
+
+	// 2. Perform repository cleanup
+	err := repo.Cleanup(ctx)
+	if err != nil {
+		return err
+	}
+
+	// 3. Get remaining agents
+	remainingAgents, _ := repo.GetAll(ctx)
+	remainingIDs := make(map[string]bool)
+	for _, a := range remainingAgents {
+		remainingIDs[a.AgentID] = true
+	}
+
+	// 4. Clear process cache for removed agents
+	for _, a := range allAgents {
+		if !remainingIDs[a.AgentID] {
+			uc.controlService.ClearAgentCache(a.AgentID)
+			uc.controlService.UnregisterCommandChan(a.AgentID)
+		}
+	}
+
+	return nil
+}
+
+// helper to get agent repository with cleanup capabilities
+func (uc *MonitorUseCase) agentRepo() repository.AgentRegistryRepository {
+	if repo, ok := uc.agentRegistry.(repository.AgentRegistryRepository); ok {
+		return repo
+	}
+	return nil
 }

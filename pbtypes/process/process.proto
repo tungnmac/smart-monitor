@@ -22,6 +22,8 @@ service ProcessService {
 
 message GetProcessesRequest {
   string hostname = 1;
+  string sort_by = 2; // e.g., "cpu", "memory", "name", "pid"
+  string order = 3; // e.g., "asc", "desc"
 }
 
 message GetProcessesResponse {
@@ -34,6 +36,8 @@ message Process {
   string name = 2;
   double cpu = 3;
   double memory = 4;
+  string command = 5;
+  int32 port = 6;
 }
 
 message KillProcessRequest {

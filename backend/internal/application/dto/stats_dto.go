@@ -13,6 +13,17 @@ type StatsRequest struct {
 	RAM          float64
 	Disk         float64
 	Metadata     map[string]string
+	Processes    []*ProcessDTO
+}
+
+// ProcessDTO represents process info in stats
+type ProcessDTO struct {
+	PID     int32
+	Name    string
+	CPU     float64
+	Memory  float64
+	Command string
+	Port    int32
 }
 
 // StatsResponse represents stats response

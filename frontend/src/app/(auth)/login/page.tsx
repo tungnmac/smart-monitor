@@ -153,8 +153,8 @@ function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const callbackUrl = params.get("callbackUrl") || "/dashboard";
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("admin@smartmonitor.com");
+  const [password, setPassword] = useState("adminpassword");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -190,7 +190,7 @@ function LoginForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full rounded-xl border border-white/10 bg-slate-800/80 px-4 py-3 text-sm text-white outline-none ring-0 transition focus:border-indigo-400 focus:bg-slate-800"
-          placeholder="admin@example.com"
+          placeholder="admin@smartmonitor.com"
           autoComplete="email"
           required
         />

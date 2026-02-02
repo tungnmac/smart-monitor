@@ -147,16 +147,18 @@ func (r *InMemoryHostRepository) Delete(ctx context.Context, hostname string) er
 
 // InMemoryAgentRegistryRepository implements AgentRegistryRepository with in-memory storage
 type InMemoryAgentRegistryRepository struct {
-	mu         sync.RWMutex
-	agents     map[string]*entity.AgentRegistry // key: agentID
-	tokenIndex map[string]string                // key: token, value: agentID
+	mu            sync.RWMutex
+	agents        map[string]*entity.AgentRegistry // key: agentID
+	tokenIndex    map[string]string                // key: token, value: agentID
+	hostnameIndex map[string]string                // key: hostname, value: agentID
 }
 
 // NewInMemoryAgentRegistryRepository creates a new in-memory agent registry repository
 func NewInMemoryAgentRegistryRepository() repository.AgentRegistryRepository {
 	return &InMemoryAgentRegistryRepository{
-		agents:     make(map[string]*entity.AgentRegistry),
-		tokenIndex: make(map[string]string),
+		agents:        make(map[string]*entity.AgentRegistry),
+		tokenIndex:    make(map[string]string),
+		hostnameIndex: make(map[string]string),
 	}
 }
 
@@ -165,8 +167,17 @@ func (r *InMemoryAgentRegistryRepository) Register(ctx context.Context, agent *e
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	// Proactively clean up ANY existing agents with the same hostname to prevent duplicates
+	for id, a := range r.agents {
+		if a.Hostname == agent.Hostname && id != agent.AgentID {
+			delete(r.tokenIndex, a.AccessToken)
+			delete(r.agents, id)
+		}
+	}
+
 	r.agents[agent.AgentID] = agent
 	r.tokenIndex[agent.AccessToken] = agent.AgentID
+	r.hostnameIndex[agent.Hostname] = agent.AgentID
 	return nil
 }
 
@@ -174,6 +185,24 @@ func (r *InMemoryAgentRegistryRepository) Register(ctx context.Context, agent *e
 func (r *InMemoryAgentRegistryRepository) GetByAgentID(ctx context.Context, agentID string) (*entity.AgentRegistry, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+
+	agent, exists := r.agents[agentID]
+	if !exists {
+		return nil, fmt.Errorf("agent not found: %s", agentID)
+	}
+
+	return agent, nil
+}
+
+// GetByHostname retrieves an agent by hostname
+func (r *InMemoryAgentRegistryRepository) GetByHostname(ctx context.Context, hostname string) (*entity.AgentRegistry, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	agentID, exists := r.hostnameIndex[hostname]
+	if !exists {
+		return nil, fmt.Errorf("agent not found for hostname: %s", hostname)
+	}
 
 	agent, exists := r.agents[agentID]
 	if !exists {
@@ -206,15 +235,21 @@ func (r *InMemoryAgentRegistryRepository) Update(ctx context.Context, agent *ent
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	// Update token index if token changed
+	// Update indexes if needed
 	if oldAgent, exists := r.agents[agent.AgentID]; exists {
 		if oldAgent.AccessToken != agent.AccessToken {
 			delete(r.tokenIndex, oldAgent.AccessToken)
 			r.tokenIndex[agent.AccessToken] = agent.AgentID
 		}
+		if oldAgent.Hostname != agent.Hostname {
+			delete(r.hostnameIndex, oldAgent.Hostname)
+			r.hostnameIndex[agent.Hostname] = agent.AgentID
+		}
 	}
 
 	r.agents[agent.AgentID] = agent
+	r.tokenIndex[agent.AccessToken] = agent.AgentID
+	r.hostnameIndex[agent.Hostname] = agent.AgentID
 	return nil
 }
 
@@ -225,35 +260,94 @@ func (r *InMemoryAgentRegistryRepository) Delete(ctx context.Context, agentID st
 
 	if agent, exists := r.agents[agentID]; exists {
 		delete(r.tokenIndex, agent.AccessToken)
+		delete(r.hostnameIndex, agent.Hostname)
 	}
 	delete(r.agents, agentID)
 	return nil
 }
 
-// GetAll retrieves all registered agents
+// GetAll retrieves all registered agents, deduplicated by hostname
 func (r *InMemoryAgentRegistryRepository) GetAll(ctx context.Context) ([]*entity.AgentRegistry, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	result := make([]*entity.AgentRegistry, 0, len(r.agents))
+	// Use a map to keep only the most recent agent for each hostname
+	dedup := make(map[string]*entity.AgentRegistry)
 	for _, agent := range r.agents {
+		existing, exists := dedup[agent.Hostname]
+		if !exists || agent.LastAuthAt.After(existing.LastAuthAt) {
+			dedup[agent.Hostname] = agent
+		}
+	}
+
+	result := make([]*entity.AgentRegistry, 0, len(dedup))
+	for _, agent := range dedup {
 		result = append(result, agent)
 	}
 
 	return result, nil
 }
 
-// GetActive retrieves all active agents
+// GetActive retrieves all active agents, deduplicated by hostname
 func (r *InMemoryAgentRegistryRepository) GetActive(ctx context.Context) ([]*entity.AgentRegistry, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	result := make([]*entity.AgentRegistry, 0)
+	dedup := make(map[string]*entity.AgentRegistry)
 	for _, agent := range r.agents {
 		if agent.IsValid() {
-			result = append(result, agent)
+			existing, exists := dedup[agent.Hostname]
+			if !exists || agent.LastAuthAt.After(existing.LastAuthAt) {
+				dedup[agent.Hostname] = agent
+			}
 		}
 	}
 
+	result := make([]*entity.AgentRegistry, 0, len(dedup))
+	for _, agent := range dedup {
+		result = append(result, agent)
+	}
+
 	return result, nil
+}
+
+// Cleanup removes duplicate agent entries, keeping only the most recent for each hostname
+func (r *InMemoryAgentRegistryRepository) Cleanup(ctx context.Context) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// 1. Identify best agent for each hostname (the one most recientemente seen)
+	bestAgents := make(map[string]string) // hostname -> agentID
+	for agentID, agent := range r.agents {
+		if bestID, exists := bestAgents[agent.Hostname]; !exists {
+			bestAgents[agent.Hostname] = agentID
+		} else {
+			bestAgent := r.agents[bestID]
+			if agent.LastAuthAt.After(bestAgent.LastAuthAt) {
+				bestAgents[agent.Hostname] = agentID
+			}
+		}
+	}
+
+	// 2. Remove all agents not in the bestAgents map
+	toDelete := make([]string, 0)
+	for agentID, agent := range r.agents {
+		if bestID := bestAgents[agent.Hostname]; bestID != agentID {
+			toDelete = append(toDelete, agentID)
+		}
+	}
+
+	for _, agentID := range toDelete {
+		agent := r.agents[agentID]
+		delete(r.tokenIndex, agent.AccessToken)
+		delete(r.agents, agentID)
+	}
+
+	// 3. Ensure hostnameIndex points to the remaining ones
+	r.hostnameIndex = make(map[string]string)
+	for id, agent := range r.agents {
+		r.hostnameIndex[agent.Hostname] = id
+	}
+
+	return nil
 }

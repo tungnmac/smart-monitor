@@ -1,4 +1,4 @@
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:50051";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
 
 export interface Agent {
   id: string;
@@ -34,6 +34,15 @@ export interface Policy {
   applied_agents: string[];
   created_at?: number;
   updated_at?: number;
+}
+
+export interface Process {
+  pid: number;
+  name: string;
+  cpu: number;
+  memory: number;
+  command: string;
+  port: number;
 }
 
 // Fetch agents list
@@ -160,6 +169,44 @@ export async function blockAgent(
     return res.ok;
   } catch (err) {
     console.error("Failed to block agent:", err);
+    return false;
+  }
+}
+
+// Fetch processes for a specific agent/host
+export async function fetchProcesses(
+  hostname: string,
+  sortBy: string = "cpu",
+  order: string = "desc"
+): Promise<Process[]> {
+  try {
+    const res = await fetch(
+      `${BACKEND_URL}/v1/processes?hostname=${hostname}&sort_by=${sortBy}&order=${order}`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return data.processes || [];
+  } catch (err) {
+    console.error(`Failed to fetch processes for ${hostname}:`, err);
+    return [];
+  }
+}
+
+// Kill a process on a specific agent
+export async function killProcess(hostname: string, pid: number): Promise<boolean> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/v1/processes/kill`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hostname, pid }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.error(`Failed to kill process ${pid} on ${hostname}:`, err);
     return false;
   }
 }

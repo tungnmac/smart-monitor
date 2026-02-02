@@ -5,16 +5,22 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"os/signal"
+	"runtime"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/shirou/gopsutil/v3/process"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -48,19 +54,29 @@ func main() {
 	// Get local IP address
 	ipAddress := getLocalIP()
 	log.Printf("Agent IP: %s", ipAddress)
-
-	// Generate unique agent ID based on hostname and IP
-	agentID := generateAgentID(hostname, ipAddress)
-	log.Printf("Agent ID: %s", agentID)
 	log.Printf("Agent Version: %s", agentVersion)
 
-	// Connect to backend via gRPC
-	conn, err := grpc.Dial(backendAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("Failed to connect to backend: %v", err)
+	// Connect to backend via gRPC with retry
+	var conn *grpc.ClientConn
+	ctx := context.Background()
+	for i := 0; i < 10; i++ {
+		conn, err = grpc.Dial(backendAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err == nil {
+			// Check if connection is actually possible
+			client := pb.NewMonitorServiceClient(conn)
+			_, err = client.RegisterAgent(ctx, &pb.RegisterRequest{Hostname: "ping"})
+			if err == nil || strings.Contains(err.Error(), "already exists") {
+				log.Printf("✓ Connected to backend at %s", backendAddr)
+				break
+			}
+		}
+		log.Printf("Waiting for backend at %s (attempt %d/10)...", backendAddr, i+1)
+		time.Sleep(2 * time.Second)
+		if i == 9 {
+			log.Fatalf("Failed to connect to backend after 10 attempts: %v", err)
+		}
 	}
 	defer conn.Close()
-	log.Printf("✓ Connected to backend at %s", backendAddr)
 
 	client := pb.NewMonitorServiceClient(conn)
 
@@ -102,8 +118,32 @@ func main() {
 
 	// Start monitoring and streaming stats
 	log.Println("✓ Starting monitoring...")
-	if err := streamStats(ctx, client, hostname, credentials, metadata); err != nil {
-		log.Printf("Error streaming stats: %v", err)
+	for {
+		err := streamMetrics(ctx, client, hostname, ipAddress, credentials, metadata)
+		if err != nil {
+			log.Printf("Error streaming stats: %v", err)
+
+			// If error is unauthenticated, wait and try to re-register
+			if strings.Contains(err.Error(), "invalid token") || strings.Contains(err.Error(), "unauthenticated") {
+				log.Println("⚠ Authentication failed. Re-registering in 10s...")
+				time.Sleep(10 * time.Second)
+
+				newCreds, regErr := registerAgent(ctx, client, hostname, ipAddress, metadata)
+				if regErr == nil {
+					credentials = newCreds
+					saveCredentials(credentials)
+					log.Printf("✓ Re-registered successfully. New ID: %s", credentials.AgentID)
+					continue
+				}
+				log.Printf("Failed to re-register: %v", regErr)
+			}
+		}
+
+		// Wait before retry for other errors
+		time.Sleep(5 * time.Second)
+		if ctx.Err() != nil {
+			break
+		}
 	}
 
 	log.Println("Agent stopped")
@@ -182,66 +222,171 @@ func loadCredentials() (*AgentCredentials, error) {
 	return &creds, nil
 }
 
-// streamStats collects and streams system stats to backend
-func streamStats(ctx context.Context, client pb.MonitorServiceClient, hostname string, credentials *AgentCredentials, metadata map[string]string) error {
+// streamMetrics collects and streams system metrics to backend
+func streamMetrics(ctx context.Context, client pb.MonitorServiceClient, hostname, ipAddress string, credentials *AgentCredentials, metadata map[string]string) error {
 	stream, err := client.StreamStats(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create stream: %w", err)
 	}
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	log.Println("📊 Monitoring system metrics...")
+	// Channel to trigger immediate heartbeat
+	triggerChan := make(chan struct{}, 1)
 
-	// Get IP address
-	ipAddress := getLocalIP()
+	log.Printf("📊 Monitoring system metrics (interval: %v)...", interval)
+
+	// Goroutine to receive commands from backend
+	go func() {
+		for {
+			resp, err := stream.Recv()
+			if err != nil {
+				if err != io.EOF {
+					log.Printf("Error receiving from stream: %v", err)
+				}
+				return
+			}
+
+			if resp.Command != nil && resp.Command.Type != pb.Command_NONE {
+				if resp.Command.Type == pb.Command_UPDATE_CONFIG {
+					log.Printf("Received REFRESH command, triggering heartbeat...")
+					select {
+					case triggerChan <- struct{}{}:
+					default:
+						// Already triggered
+					}
+				} else {
+					handleCommand(resp.Command)
+				}
+			}
+		}
+	}()
 
 	for {
 		select {
 		case <-ctx.Done():
 			// Close stream gracefully
-			resp, err := stream.CloseAndRecv()
+			err := stream.CloseSend()
 			if err != nil {
 				log.Printf("Error closing stream: %v", err)
-			} else {
-				log.Printf("Final response: %s", resp.Message)
 			}
 			return nil
 
+		case <-triggerChan:
+			log.Printf("Executing immediate heartbeat...")
+			collectAndSend(hostname, ipAddress, credentials, metadata, stream)
+
 		case <-ticker.C:
-			// Collect metrics
-			stats, err := collectStats(hostname, credentials.AgentID, ipAddress, credentials.AccessToken, metadata)
-			if err != nil {
-				log.Printf("Error collecting stats: %v", err)
-				continue
-			}
-
-			// Send to backend
-			if err := stream.Send(stats); err != nil {
-				log.Printf("Error sending stats: %v", err)
-				return err
-			}
-
-			log.Printf("✓ Sent [%s]: CPU=%.2f%%, RAM=%.2f%%, Disk=%.2f%%",
-				credentials.AgentID, stats.Cpu, stats.Ram, stats.Disk)
+			collectAndSend(hostname, ipAddress, credentials, metadata, stream)
 		}
 	}
+}
+
+// collectAndSend collects stats and sends them through the stream
+func collectAndSend(hostname, ipAddress string, credentials *AgentCredentials, metadata map[string]string, stream pb.MonitorService_StreamStatsClient) {
+	// Collect metrics
+	stats, err := collectStats(hostname, credentials.AgentID, ipAddress, credentials.AccessToken, metadata)
+	if err != nil {
+		log.Printf("Error collecting stats: %v", err)
+		return
+	}
+
+	// Send to backend
+	if err := stream.Send(stats); err != nil {
+		log.Printf("Error sending stats: %v", err)
+		return
+	}
+
+	log.Printf("✓ Sent [%s]: CPU=%.2f%%, RAM=%.2f%%, Disk=%.2f%%, Procs=%d",
+		credentials.AgentID, stats.Cpu, stats.Ram, stats.Disk, len(stats.Processes))
+}
+
+// handleCommand executes commands received from backend
+func handleCommand(cmd *pb.Command) {
+	log.Printf("Received command: %v with args: %v", cmd.Type, cmd.Args)
+
+	switch cmd.Type {
+	case pb.Command_KILL_PROCESS:
+		pidStr, ok := cmd.Args["pid"]
+		if !ok {
+			log.Printf("Error: PID argument missing for KILL_PROCESS command")
+			return
+		}
+		pid, err := strconv.Atoi(pidStr)
+		if err != nil {
+			log.Printf("Error: Invalid PID %s: %v", pidStr, err)
+			return
+		}
+
+		err = killProcess(int32(pid))
+		if err != nil {
+			log.Printf("Error: Failed to kill process %d: %v", pid, err)
+		} else {
+			log.Printf("✓ Process %d killed successfully", pid)
+		}
+
+	case pb.Command_RESTART_AGENT:
+		log.Printf("Restarting agent...")
+		// In a real implementation, this might exit and let a service manager restart it
+		os.Exit(0)
+
+	default:
+		log.Printf("Unhandled command type: %v", cmd.Type)
+	}
+}
+
+// killProcess kills a process by PID
+func killProcess(pid int32) error {
+	p, err := process.NewProcess(pid)
+	if err != nil {
+		return err
+	}
+	return p.Kill()
 }
 
 // collectStats gathers current system statistics
 func collectStats(hostname, agentID, ipAddress, accessToken string, metadata map[string]string) (*pb.StatsRequest, error) {
 	// CPU usage
+	cpuUsage := 0.0
 	cpuPercent, err := cpu.Percent(time.Second, false)
 	if err != nil {
-		return nil, err
-	}
-	cpuUsage := 0.0
-	if len(cpuPercent) > 0 {
-		cpuUsage = cpuPercent[0]
-	}
+		// Only log this warning once or less frequently? For now, let's keep it but make it clear.
 
-	// Memory usage
+		// Fallback for macOS (Darwin) when CGO is disabled
+		if runtime.GOOS == "darwin" {
+			// Using 'top' to get CPU usage: "CPU usage: 5.34% user, 4.41% sys, 90.24% idle"
+			// Using a more robust command to get just the numbers
+			out, execErr := exec.Command("sh", "-c", "top -l 1 -n 0 | grep 'CPU usage'").Output()
+			if execErr == nil {
+				str := string(out)
+				// Format: "CPU usage: 5.34% user, 4.41% sys, 90.24% idle"
+				userParts := strings.Split(str, "user")
+				if len(userParts) > 0 {
+					userStr := userParts[0]
+					if idx := strings.LastIndex(userStr, ":"); idx != -1 {
+						userStr = userStr[idx+1:]
+					}
+					userStr = strings.TrimSpace(strings.ReplaceAll(userStr, "%", ""))
+					userVal, _ := strconv.ParseFloat(userStr, 64)
+
+					sysParts := strings.Split(str, "sys")
+					if len(sysParts) > 0 {
+						sysStr := sysParts[0]
+						if idx := strings.LastIndex(sysStr, ","); idx != -1 {
+							sysStr = sysStr[idx+1:]
+						}
+						sysStr = strings.TrimSpace(strings.ReplaceAll(sysStr, "%", ""))
+						sysVal, _ := strconv.ParseFloat(sysStr, 64)
+
+						cpuUsage = userVal + sysVal
+					}
+				}
+			}
+		}
+	} else if len(cpuPercent) > 0 {
+		cpuUsage = cpuPercent[0]
+	} // Memory usage
 	memInfo, err := mem.VirtualMemory()
 	if err != nil {
 		return nil, err
@@ -251,6 +396,39 @@ func collectStats(hostname, agentID, ipAddress, accessToken string, metadata map
 	diskInfo, err := disk.Usage("/")
 	if err != nil {
 		return nil, err
+	}
+
+	// Collect top processes
+	var pbProcesses []*pb.ProcessInfo
+	procs, err := process.Processes()
+	if err == nil {
+		for i, p := range procs {
+			if i >= 50 { // Limit for simplified agent
+				break
+			}
+			name, _ := p.Name()
+			cpuP, _ := p.CPUPercent()
+			memP, _ := p.MemoryPercent()
+			cmd, _ := p.Cmdline()
+
+			var port int32
+			conns, _ := p.Connections()
+			for _, conn := range conns {
+				if conn.Status == "LISTEN" {
+					port = int32(conn.Laddr.Port)
+					break
+				}
+			}
+
+			pbProcesses = append(pbProcesses, &pb.ProcessInfo{
+				Pid:     p.Pid,
+				Name:    name,
+				Cpu:     cpuP,
+				Memory:  float64(memP),
+				Command: cmd,
+				Port:    port,
+			})
+		}
 	}
 
 	return &pb.StatsRequest{
@@ -263,5 +441,6 @@ func collectStats(hostname, agentID, ipAddress, accessToken string, metadata map
 		Ram:          memInfo.UsedPercent,
 		Disk:         diskInfo.UsedPercent,
 		Metadata:     metadata,
+		Processes:    pbProcesses,
 	}, nil
 }

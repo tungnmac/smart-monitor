@@ -103,3 +103,37 @@ func (h *MetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "# TYPE smart_monitor_active_hosts gauge\n")
 	fmt.Fprintf(w, "smart_monitor_active_hosts %d\n", len(hosts))
 }
+
+// CleanupHandler handles cache cleaning requests
+type CleanupHandler struct {
+	monitorUseCase *usecase.MonitorUseCase
+}
+
+// NewCleanupHandler creates a new cleanup handler
+func NewCleanupHandler(monitorUseCase *usecase.MonitorUseCase) *CleanupHandler {
+	return &CleanupHandler{
+		monitorUseCase: monitorUseCase,
+	}
+}
+
+// ServeHTTP handles cleanup requests
+func (h *CleanupHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	err := h.monitorUseCase.CleanupAgents(r.Context())
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Cleanup failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":    "success",
+		"message":   "Agent cache cleaned successfully (duplicates removed)",
+		"timestamp": time.Now().Unix(),
+	})
+}
