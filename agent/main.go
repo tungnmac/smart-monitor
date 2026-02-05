@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -402,14 +403,63 @@ func collectStats(hostname, agentID, ipAddress, accessToken string, metadata map
 	var pbProcesses []*pb.ProcessInfo
 	procs, err := process.Processes()
 	if err == nil {
-		for i, p := range procs {
-			if i >= 50 { // Limit for simplified agent
-				break
-			}
-			name, _ := p.Name()
+		type procWithStats struct {
+			p    *process.Process
+			cpu  float64
+			mem  float32
+			name string
+		}
+		var stats []procWithStats
+		for _, p := range procs {
 			cpuP, _ := p.CPUPercent()
 			memP, _ := p.MemoryPercent()
+			name, _ := p.Name()
+			if name == "" {
+				name = fmt.Sprintf("system-proc-%d", p.Pid)
+			}
+			stats = append(stats, procWithStats{p, cpuP, memP, name})
+		}
+
+		// Sort by CPU usage, then Memory
+		sort.Slice(stats, func(i, j int) bool {
+			if stats[i].cpu != stats[j].cpu {
+				return stats[i].cpu > stats[j].cpu
+			}
+			return stats[i].mem > stats[j].mem
+		})
+
+		limit := 200 // Increased limit to include more processes from VMs/Containers
+		if len(stats) < limit {
+			limit = len(stats)
+		}
+
+		for i := 0; i < limit; i++ {
+			p := stats[i].p
 			cmd, _ := p.Cmdline()
+
+			// Better detection for containerized/virtualized processes
+			displayName := stats[i].name
+			cmdLow := strings.ToLower(cmd)
+			if runtime.GOOS == "linux" {
+				if cgroup, err := os.ReadFile(fmt.Sprintf("/proc/%d/cgroup", p.Pid)); err == nil {
+					cgroupStr := string(cgroup)
+					if strings.Contains(cgroupStr, "docker") || strings.Contains(cgroupStr, "kubepods") || strings.Contains(cgroupStr, "containerd") {
+						displayName = "[Container] " + displayName
+					}
+				}
+			}
+
+			// VM detection based on common process names/commands
+			if strings.Contains(cmdLow, "qemu") || strings.Contains(cmdLow, "vbox") || strings.Contains(cmdLow, "virtualbox") || strings.Contains(cmdLow, "vmware") {
+				if !strings.HasPrefix(displayName, "[") {
+					displayName = "[VM Host] " + displayName
+				}
+			}
+
+			// Include thread information if significant
+			if numThreads, err := p.NumThreads(); err == nil && numThreads > 1 {
+				displayName = fmt.Sprintf("%s (%d thds)", displayName, numThreads)
+			}
 
 			var port int32
 			conns, _ := p.Connections()
@@ -422,9 +472,9 @@ func collectStats(hostname, agentID, ipAddress, accessToken string, metadata map
 
 			pbProcesses = append(pbProcesses, &pb.ProcessInfo{
 				Pid:     p.Pid,
-				Name:    name,
-				Cpu:     cpuP,
-				Memory:  float64(memP),
+				Name:    displayName,
+				Cpu:     stats[i].cpu,
+				Memory:  float64(stats[i].mem),
 				Command: cmd,
 				Port:    port,
 			})
